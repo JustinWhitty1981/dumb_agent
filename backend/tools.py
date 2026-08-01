@@ -5,11 +5,9 @@ Includes: current_time, web_search, web_scrape, and memory tools.
 
 from datetime import datetime
 from langchain_core.tools import tool
-from duckduckgo_search import DDGS
 from bs4 import BeautifulSoup
 import httpx
-import time
-import random
+import os
 
 from memory import save_memory as mem_save, get_memory as mem_get, list_memories as mem_list
 
@@ -29,7 +27,7 @@ def current_time() -> str:
 @tool
 def search_web(query: str) -> str:
     """
-    Search the web using DuckDuckGo.
+    Search the web using Tavily API.
     
     Args:
         query: The search query string.
@@ -37,43 +35,31 @@ def search_web(query: str) -> str:
     Returns:
         Search results with titles, snippets, and URLs.
     """
-    max_retries = 7
-    base_delay = 8  # Increased base delay to 8 seconds
-    
-    for attempt in range(max_retries):
-        try:
-            # Add random jitter to delay (between 0.8x and 1.5x of base delay)
-            jitter = random.uniform(0.8, 1.5)
-            delay = base_delay * (1.5 ** attempt) * jitter
-            
-            if attempt > 0:
-                time.sleep(delay)
-            
-            # Use DDGS with safer settings to avoid rate limiting
-            with DDGS() as ddgs:
-                results = list(ddgs.text(query, max_results=5, region="wt-wt"))
-            
-            if not results:
-                return "No search results found."
-            
-            formatted = []
-            for i, result in enumerate(results, 1):
-                title = result.get("title", "No title")
-                snippet = result.get("body", "No description")
-                url = result.get("href", "No URL")
-                formatted.append(f"{i}. **{title}**\n   {snippet}\n   URL: {url}")
-            
-            return "\n\n".join(formatted)
-        except Exception as e:
-            error_msg = str(e)
-            # Check if it's a rate limit error
-            if "ratelimit" in error_msg.lower() or "202" in error_msg or "429" in error_msg:
-                if attempt < max_retries - 1:
-                    continue
-                else:
-                    return f"Search failed after {max_retries} attempts due to rate limiting. Please try again in a few minutes."
-            else:
-                return f"Search failed: {str(e)}"
+    try:
+        from tavily import TavilyClient
+        
+        api_key = os.getenv("TAVILY_API_KEY")
+        if not api_key:
+            return "Tavily API key not configured. Please set TAVILY_API_KEY environment variable."
+        
+        client = TavilyClient(api_key=api_key)
+        
+        # Search with Tavily
+        response = client.search(query, search_depth="basic", max_results=5)
+        
+        if not response.get("results"):
+            return "No search results found."
+        
+        formatted = []
+        for i, result in enumerate(response["results"], 1):
+            title = result.get("title", "No title")
+            snippet = result.get("content", "No description")
+            url = result.get("url", "No URL")
+            formatted.append(f"{i}. **{title}**\n   {snippet}\n   URL: {url}")
+        
+        return "\n\n".join(formatted)
+    except Exception as e:
+        return f"Search failed: {str(e)}"
 
 
 @tool

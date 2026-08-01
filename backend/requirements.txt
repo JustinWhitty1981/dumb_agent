@@ -1,0 +1,21 @@
+# FastAPI and server
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+
+# LangChain / LangGraph ecosystem (compatible set)
+langchain==0.3.18
+langchain-core==0.3.34
+langgraph==0.2.74
+langchain-ollama==0.2.3          # real version (0.0.3 never existed)
+
+# Data and utilities
+pydantic==2.10.4
+httpx==0.28.1
+
+# Web scraping and search
+beautifulsoup4==4.12.3
+duckduckgo-search==6.3.5
+
+# File handling
+python-multipart==0.0.17
+aiofiles==24.1.0

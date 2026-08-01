@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  langchain-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: langchain-agent
+    ports:
+      - "4545:8000"
+    environment:
+      - OLLAMA_BASE_URL=http://192.168.0.59:11434
+      - OLLAMA_MODEL=qwen3.5:9b
+      - HOST=0.0.0.0
+      - PORT=8000
+      - TZ=America/Chicago
+    volumes:
+      - ./backend/memory_store:/app/memory_store
+    restart: unless-stopped

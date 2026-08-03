@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import HumanMessage, AIMessage, BaseMessage
-from langchain_ollama import ChatOllama
+from langchain_openai import ChatOpenAI
 
 from tools import (
     current_time,
@@ -25,8 +25,11 @@ from tools import (
 )
 
 # Configuration
-OLLAMA_URL = os.getenv("OLLAMA_BASE_URL", "http://192.168.0.59:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3.5:9b")
+# vllm uses OpenAI-compatible API
+VLLM_URL = os.getenv("VLLM_BASE_URL", "http://192.168.0.42:8001/v1")
+VLLM_MODEL = os.getenv("VLLM_MODEL", "qwen3.5:9b")
+# vllm doesn't require API key by default, but can be configured
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "not-needed")
 HOST = os.getenv("HOST", "0.0.0.0")
 PORT = int(os.getenv("PORT", 8000))
 
@@ -58,10 +61,11 @@ STATIC_DIR = "/app/backend/static"
 if os.path.exists(STATIC_DIR):
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
-# Initialize the LLM
-llm = ChatOllama(
-    model=OLLAMA_MODEL,
-    base_url=OLLAMA_URL,
+# Initialize the LLM using vllm (OpenAI-compatible API)
+llm = ChatOpenAI(
+    model=VLLM_MODEL,
+    base_url=VLLM_URL,
+    api_key=OPENAI_API_KEY,
     temperature=0.7
 )
 
@@ -189,7 +193,7 @@ async def get_history(thread_id: Optional[str] = "default"):
 @app.get("/api/health")
 async def health_check():
     """Health check endpoint."""
-    return {"status": "healthy", "ollama_url": OLLAMA_URL, "model": OLLAMA_MODEL}
+    return {"status": "healthy", "vllm_url": VLLM_URL, "model": VLLM_MODEL}
 
 
 @app.get("/")

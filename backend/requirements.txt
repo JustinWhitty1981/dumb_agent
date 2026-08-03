@@ -6,7 +6,7 @@ uvicorn[standard]==0.32.1
 langchain==0.3.18
 langchain-core==0.3.34
 langgraph==0.2.74
-langchain-ollama==0.2.3          # real version (0.0.3 never existed)
+langchain-openai==0.2.14         # for vllm OpenAI-compatible API
 
 # Data and utilities
 pydantic==2.10.4

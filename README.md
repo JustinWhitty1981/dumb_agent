@@ -117,7 +117,7 @@ Test results are output as formatted summary tables and exported to `test_result
 ### POST /api/chat/stream *(Primary)*
 Stream response tokens and live status events via Server-Sent Events (SSE).
 
-```json
+```text
 // Request Payload
 {
   "message": "Show me the top 5 paint defects in the last 3 hours",

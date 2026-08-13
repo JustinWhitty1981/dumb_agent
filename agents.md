@@ -147,7 +147,7 @@ User prefers email contact over phone
 ### POST /api/chat/stream *(Primary Streaming Endpoint)*
 Stream response tokens and live status events via Server-Sent Events (SSE).
 
-```json
+```text
 // Request
 {
   "message": "What's the current time?",

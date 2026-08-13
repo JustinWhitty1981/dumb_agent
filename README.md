@@ -136,7 +136,7 @@ data: {"type": "done"}
 ### POST /api/chat
 Standard synchronous POST endpoint returning complete response JSON.
 
-```json
+```text
 // Request
 {
   "message": "What is the current time?",

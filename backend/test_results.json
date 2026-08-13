@@ -1,0 +1,81 @@
+{
+  "timestamp": "2026-08-13 05:43:26",
+  "total": 10,
+  "passed": 10,
+  "failed": 0,
+  "skipped": 0,
+  "duration_seconds": 5.51,
+  "exit_code": 0,
+  "tests": [
+    {
+      "node_id": "tests/test_agent_suite.py::test_current_time_tool",
+      "test_name": "test_current_time_tool",
+      "status": "PASSED",
+      "duration_seconds": 0.0,
+      "error": null
+    },
+    {
+      "node_id": "tests/test_agent_suite.py::test_memory_lifecycle",
+      "test_name": "test_memory_lifecycle",
+      "status": "PASSED",
+      "duration_seconds": 0.011,
+      "error": null
+    },
+    {
+      "node_id": "tests/test_agent_suite.py::test_web_search_gold_price",
+      "test_name": "test_web_search_gold_price",
+      "status": "PASSED",
+      "duration_seconds": 0.178,
+      "error": null
+    },
+    {
+      "node_id": "tests/test_agent_suite.py::test_scrape_url_tool",
+      "test_name": "test_scrape_url_tool",
+      "status": "PASSED",
+      "duration_seconds": 0.006,
+      "error": null
+    },
+    {
+      "node_id": "tests/test_agent_suite.py::test_highbyte_mcp_paint_defects_tool",
+      "test_name": "test_highbyte_mcp_paint_defects_tool",
+      "status": "PASSED",
+      "duration_seconds": 1.182,
+      "error": null
+    },
+    {
+      "node_id": "tests/test_agent_suite.py::test_api_health_endpoint",
+      "test_name": "test_api_health_endpoint",
+      "status": "PASSED",
+      "duration_seconds": 0.001,
+      "error": null
+    },
+    {
+      "node_id": "tests/test_agent_suite.py::test_chat_streaming_endpoint",
+      "test_name": "test_chat_streaming_endpoint",
+      "status": "PASSED",
+      "duration_seconds": 2.705,
+      "error": null
+    },
+    {
+      "node_id": "tests/test_agent_suite.py::test_wrap_tool_with_truncation_large_output",
+      "test_name": "test_wrap_tool_with_truncation_large_output",
+      "status": "PASSED",
+      "duration_seconds": 0.005,
+      "error": null
+    },
+    {
+      "node_id": "tests/test_agent_suite.py::test_insights_publish_agent_name_enforcement",
+      "test_name": "test_insights_publish_agent_name_enforcement",
+      "status": "PASSED",
+      "duration_seconds": 0.002,
+      "error": null
+    },
+    {
+      "node_id": "tests/test_agent_suite.py::test_format_fallback_tool_summary_weather",
+      "test_name": "test_format_fallback_tool_summary_weather",
+      "status": "PASSED",
+      "duration_seconds": 0.0,
+      "error": null
+    }
+  ]
+}

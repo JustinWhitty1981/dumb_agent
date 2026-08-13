@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  langchain-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: langchain-agent
+    ports:
+      - "4545:8000"
+    env_file:
+      - .env
+    environment:
+      - VLLM_BASE_URL=http://172.18.0.2:8000/v1
+      - VLLM_MODEL=/models/Qwen3.5-9B-AWQ
+      - TAVILY_API_KEY=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
+      - HOST=0.0.0.0
+      - PORT=8000
+      - TZ=America/Chicago
+    volumes:
+      - ./backend:/app
+      - ./backend/memory_store:/app/memory_store
+    restart: unless-stopped

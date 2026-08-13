@@ -1,17 +1,17 @@
 {
-  "timestamp": "2026-08-13 05:43:26",
+  "timestamp": "2026-08-13 11:31:05",
   "total": 10,
   "passed": 10,
   "failed": 0,
   "skipped": 0,
-  "duration_seconds": 5.51,
+  "duration_seconds": 7.77,
   "exit_code": 0,
   "tests": [
     {
       "node_id": "tests/test_agent_suite.py::test_current_time_tool",
       "test_name": "test_current_time_tool",
       "status": "PASSED",
-      "duration_seconds": 0.0,
+      "duration_seconds": 0.001,
       "error": null
     },
     {
@@ -25,21 +25,21 @@
       "node_id": "tests/test_agent_suite.py::test_web_search_gold_price",
       "test_name": "test_web_search_gold_price",
       "status": "PASSED",
-      "duration_seconds": 0.178,
+      "duration_seconds": 1.543,
       "error": null
     },
     {
       "node_id": "tests/test_agent_suite.py::test_scrape_url_tool",
       "test_name": "test_scrape_url_tool",
       "status": "PASSED",
-      "duration_seconds": 0.006,
+      "duration_seconds": 0.022,
       "error": null
     },
     {
       "node_id": "tests/test_agent_suite.py::test_highbyte_mcp_paint_defects_tool",
       "test_name": "test_highbyte_mcp_paint_defects_tool",
       "status": "PASSED",
-      "duration_seconds": 1.182,
+      "duration_seconds": 1.184,
       "error": null
     },
     {
@@ -53,7 +53,7 @@
       "node_id": "tests/test_agent_suite.py::test_chat_streaming_endpoint",
       "test_name": "test_chat_streaming_endpoint",
       "status": "PASSED",
-      "duration_seconds": 2.705,
+      "duration_seconds": 2.962,
       "error": null
     },
     {

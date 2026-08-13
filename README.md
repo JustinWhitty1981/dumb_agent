@@ -5,23 +5,23 @@
 [![React](https://img.shields.io/badge/React-18+-blue.svg)](https://react.dev/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A powerful AI chat assistant with real-time response streaming, live thinking status indicators, web search, web scraping, markdown memory, and HighByte MCP integration. Built with LangChain, FastAPI, vLLM (`Qwen3.5-9B-AWQ`), and React.
+A powerful AI chat assistant with real-time response streaming, live thinking status indicators, web search, web scraping, markdown memory, and HighByte MCP integration. Built with LangChain, FastAPI, vLLM (Qwen3.5-9B-AWQ), and React.
 
-> **Turn your local or corporate LLM into a powerful assistant with access to industrial MCP tools and real-world capabilities!**
+**Turn your local or corporate LLM into a powerful assistant with access to industrial MCP tools and real-world capabilities!**
 
 ## Features
 
 - **Real-Time Token Streaming** - Server-Sent Events (SSE) stream AI responses as they are generated token-by-token.
-- **Live Thinking & Tool Status Indicators** - Animated thinking bubbles display live status updates (e.g., `Running tool: paint_defects...`, `Thinking...`) during reasoning loops and auto-hide when text generation begins.
+- **Live Thinking & Tool Status Indicators** - Animated thinking bubbles display live status updates (e.g., Running tool: paint_defects..., Thinking...) during reasoning loops and auto-hide when text generation begins.
 - **Interactive Chat Interface** - Modern, responsive React/TypeScript frontend with markdown formatting and auto-resizing input.
 - **Sliding Conversation Memory** - Maintains context across messages with a 10-message sliding window to prevent token limit overflow.
 - **Payload Pre-Summarization** - Large raw JSON array payloads (e.g., door-level inspection logs) are pre-summarized into Markdown tables before hitting model context.
-- **HighByte MCP Parameter Auto-Sanitizer** - Transparently converts relative time expressions (e.g., `"now-4h"`, `"today"`, `"4 hours ago"`) into valid ISO-8601 UTC string timestamps (`YYYY-MM-DDTHH:MM:SSZ`) required by HighByte tools.
+- **HighByte MCP Parameter Auto-Sanitizer** - Transparently converts relative time expressions (e.g., "now-4h", "today", "4 hours ago") into valid ISO-8601 UTC string timestamps (YYYY-MM-DDTHH:MM:SSZ) required by HighByte tools.
 - **Web Search & Scraping** - Search the internet using Tavily API and extract clean page content.
 - **Persistent Memory** - Save and retrieve key-value information in markdown format.
-- **HighByte MCP Server Integration** - Automatically connects via Streamable HTTP/SSE to load 28+ industrial MCP tools with full `response_format = "content_and_artifact"` 2-tuple compliance.
-- **Context Window Guardrails** - Automatic tool output truncation (12k char limit) and LLM temperature optimization (`0.0`) for deterministic, reliable tool execution.
-- **Agent-Friendly Regression Test Suite** - Built-in test runner (`run_tests.py`) covering unit tests for local tools, HighByte MCP calls, and API streaming endpoints.
+- **HighByte MCP Server Integration** - Automatically connects via Streamable HTTP/SSE to load 28+ industrial MCP tools with full **response_format = "content_and_artifact"** 2-tuple compliance.
+- **Context Window Guardrails** - Automatic tool output truncation (12k char limit) and LLM temperature optimization (0.0) for deterministic, reliable tool execution.
+- **Agent-Friendly Regression Test Suite** - Built-in test runner (run_tests.py) covering unit tests for local tools, HighByte MCP calls, and API streaming endpoints.
 
 ## Tech Stack
 
@@ -29,11 +29,11 @@ A powerful AI chat assistant with real-time response streaming, live thinking st
 |-----------|------------|
 | **Backend** | FastAPI, Uvicorn, Python 3.11 |
 | **AI Framework** | LangChain, LangGraph |
-| **LLM Inference** | vLLM (`/models/Qwen3.5-9B-AWQ` @ OpenAI-compatible API) |
-| **MCP Integration** | Model Context Protocol (`mcp`, `langchain-mcp-adapters`) |
+| **LLM Inference** | vLLM (/models/Qwen3.5-9B-AWQ @ OpenAI-compatible API) |
+| **MCP Integration** | Model Context Protocol (mcp, langchain-mcp-adapters) |
 | **Frontend** | React 18, TypeScript, Vite |
-| **Streaming** | Server-Sent Events (SSE) via FastAPI `StreamingResponse` |
-| **Testing** | Pytest, Custom Agent Test Runner (`run_tests.py`) |
+| **Streaming** | Server-Sent Events (SSE) via FastAPI StreamingResponse |
+| **Testing** | Pytest, Custom Agent Test Runner (run_tests.py) |
 | **Deployment** | Docker, Docker Compose |
 
 ## Quick Start
@@ -101,23 +101,23 @@ Test results are output as formatted summary tables and exported to `test_result
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `VLLM_BASE_URL` | vLLM endpoint URL | `http://172.18.0.2:8000/v1` |
-| `VLLM_MODEL` | LLM model path/identifier | `/models/Qwen3.5-9B-AWQ` |
-| `TAVILY_API_KEY` | Tavily API key for web search | - |
-| `HIGHBYTE_MCP_URL` | HighByte MCP server endpoint | `https://nadefunsdpw01.oshkoshglobal.com:8885/mcp` |
-| `HIGHBYTE_MCP_BEARER_TOKEN` | Bearer token for HighByte MCP server | - |
-| `HIGHBYTE_MCP_ENABLED` | Toggle MCP integration (`true`/`false`) | `true` |
-| `HOST` | Backend bind address | `0.0.0.0` |
-| `PORT` | Internal server port | `8000` |
+| VLLM_BASE_URL | vLLM endpoint URL | http://172.18.0.2:8000/v1 |
+| VLLM_MODEL | LLM model path/identifier | /models/Qwen3.5-9B-AWQ |
+| TAVILY_API_KEY | Tavily API key for web search | - |
+| HIGHBYTE_MCP_URL | HighByte MCP server endpoint | https://nadefunsdpw01.oshkoshglobal.com:8885/mcp |
+| HIGHBYTE_MCP_BEARER_TOKEN | Bearer token for HighByte MCP server | - |
+| HIGHBYTE_MCP_ENABLED | Toggle MCP integration (true/false) | true |
+| HOST | Backend bind address | 0.0.0.0 |
+| PORT | Internal server port | 8000 |
 
 ---
 
 ## API Reference
 
-### `POST /api/chat/stream` *(Primary)*
+### POST /api/chat/stream *(Primary)*
 Stream response tokens and live status events via Server-Sent Events (SSE).
 
-```json
+```text
 // Request Payload
 {
   "message": "Show me the top 5 paint defects in the last 3 hours",
@@ -133,7 +133,7 @@ data: {"type": "token", "content": " of defects..."}
 data: {"type": "done"}
 ```
 
-### `POST /api/chat`
+### POST /api/chat
 Standard synchronous POST endpoint returning complete response JSON.
 
 ```json
@@ -150,16 +150,16 @@ Standard synchronous POST endpoint returning complete response JSON.
 }
 ```
 
-### `GET /api/tools`
+### GET /api/tools
 List all active tools (local + dynamic MCP tools).
 
-### `GET /api/history?thread_id={id}`
+### GET /api/history?thread_id={id}
 Retrieve conversation history for a thread.
 
-### `POST /api/reset?thread_id={id}`
+### POST /api/reset?thread_id={id}
 Clear conversation history for a thread.
 
-### `GET /api/health`
+### GET /api/health
 Health check endpoint returning vLLM, active tools count, and HighByte MCP status.
 
 ---
@@ -168,10 +168,10 @@ Health check endpoint returning vLLM, active tools count, and HighByte MCP statu
 
 | Tool Category | Tools | Description |
 |---------------|-------|-------------|
-| **Time & Search** | `current_time()`, `search_web(query)` | Live time and web search via Tavily |
-| **Web Scraping** | `scrape_url(url)` | Extract cleaned page text |
-| **Memory** | `save_memory_tool`, `get_memory_tool`, `list_memories_tool` | Persistent markdown key-value storage |
-| **MCP Industrial** | `paint_defects`, `insights_publish`, `influx_query_router`, `uns_snapshot_all_v1`, etc. | 28 HighByte MCP server tools |
+| **Time & Search** | current_time(), search_web(query) | Live time and web search via Tavily |
+| **Web Scraping** | scrape_url(url) | Extract cleaned page text |
+| **Memory** | save_memory_tool, get_memory_tool, list_memories_tool | Persistent markdown key-value storage |
+| **MCP Industrial** | paint_defects, insights_publish, influx_query_router, uns_snapshot_all_v1, etc. | 28 HighByte MCP server tools |
 
 ---
 

@@ -4,7 +4,7 @@
 
 This API provides a chat interface powered by a LangChain agent with access to web search, web scraping, markdown memory storage, and dynamic HighByte MCP tools. The API is built using FastAPI and runs on internal port 8000 (mapped to host port 4545 in Docker).
 
-**Base URL:** `http://localhost:4545` (or `http://localhost:8000` internal)
+**Base URL:** http://localhost:4545 (or http://localhost:8000 internal)
 
 ---
 
@@ -23,9 +23,9 @@ Stream response tokens and live status events via Server-Sent Events (SSE).
 ```
 
 **SSE Event Types:**
-- `status`: Live thinking status updates (e.g., `{"type": "status", "content": "Running tool: paint_defects..."}`)
-- `token`: Streamed text token chunks (e.g., `{"type": "token", "content": "The top 5 defects..."}`)
-- `done`: Signal indicating end of stream (`{"type": "done"}`)
+- status: Live thinking status updates (e.g., {"type": "status", "content": "Running tool: paint_defects..."})
+- token: Streamed text token chunks (e.g., {"type": "token", "content": "The top 5 defects..."})
+- done: Signal indicating end of stream ({"type": "done"})
 
 ---
 
@@ -50,7 +50,7 @@ Process a chat message synchronously and return the agent's response JSON. Maint
 ```
 
 **Special Commands:**
-- Send `/reset` as the message to clear the conversation history for that thread.
+- Send /reset as the message to clear the conversation history for that thread.
 
 ---
 
@@ -102,7 +102,7 @@ Get the conversation history for a specific thread.
 
 **Request:**
 ```
-GET /api/history?thread_id=default
+POST /api/history?thread_id=default
 ```
 
 **Response:**
@@ -150,15 +150,15 @@ Root endpoint that serves the main page (static frontend assets).
 ## Agent Tools
 
 ### Local Tools
-1. **`current_time()`**: Returns the current date and time.
-2. **`search_web(query: str)`**: Searches the web using Tavily API.
-3. **`scrape_url(url: str)`**: Extracts cleaned text content from a web page.
-4. **`save_memory_tool(key: str, content: str)`**: Saves key-value information to persistent markdown storage.
-5. **`get_memory_tool(key: str)`**: Retrieves stored information by key.
-6. **`list_memories_tool()`**: Lists all saved memory keys.
+1. **current_time()**: Returns the current date and time.
+2. **search_web(query: str)**: Searches the web using Tavily API.
+3. **scrape_url(url: str)**: Extracts cleaned text content from a web page.
+4. **save_memory_tool(key: str, content: str)**: Saves key-value information to persistent markdown storage.
+5. **get_memory_tool(key: str)**: Retrieves stored information by key.
+6. **list_memories_tool()**: Lists all saved memory keys.
 
 ### HighByte MCP Tools (Dynamic)
-Dynamically loaded at startup via Streamable HTTP / SSE transport from the HighByte MCP Server. Exposes 28+ industrial tools (e.g., `paint_defects`, `insights_publish`, `influx_query_router`, `uns_snapshot_all_v1`).
+Dynamically loaded at startup via Streamable HTTP / SSE transport from the HighByte MCP Server. Exposes 28+ industrial tools (e.g., paint_defects, insights_publish, influx_query_router, uns_snapshot_all_v1).
 
 ---
 
@@ -166,14 +166,14 @@ Dynamically loaded at startup via Streamable HTTP / SSE transport from the HighB
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `VLLM_BASE_URL` | `http://172.18.0.2:8000/v1` | vLLM endpoint URL |
-| `VLLM_MODEL` | `/models/Qwen3.5-9B-AWQ` | LLM model path |
-| `TAVILY_API_KEY` | - | Tavily search API key |
-| `HIGHBYTE_MCP_URL` | `https://nadefunsdpw01.oshkoshglobal.com:8885/mcp` | HighByte MCP server endpoint |
-| `HIGHBYTE_MCP_BEARER_TOKEN` | - | Bearer token for HighByte MCP server |
-| `HIGHBYTE_MCP_ENABLED` | `true` | Toggle HighByte MCP integration (`true`/`false`) |
-| `HOST` | `0.0.0.0` | Server bind address |
-| `PORT` | `8000` | Internal server port |
+| VLLM_BASE_URL | http://172.18.0.2:8000/v1 | vLLM endpoint URL |
+| VLLM_MODEL | /models/Qwen3.5-9B-AWQ | LLM model path |
+| TAVILY_API_KEY | - | Tavily search API key |
+| HIGHBYTE_MCP_URL | https://nadefunsdpw01.oshkoshglobal.com:8885/mcp | HighByte MCP server endpoint |
+| HIGHBYTE_MCP_BEARER_TOKEN | - | Bearer token for HighByte MCP server |
+| HIGHBYTE_MCP_ENABLED | true | Toggle HighByte MCP integration (true/false) |
+| HOST | 0.0.0.0 | Server bind address |
+| PORT | 8000 | Internal server port |
 
 ---
 

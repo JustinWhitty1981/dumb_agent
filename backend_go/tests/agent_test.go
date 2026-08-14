@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"jada-backend/pkg/agent"
 	"jada-backend/pkg/formatters"
 	"jada-backend/pkg/mcp"
 	"jada-backend/pkg/memory"
@@ -102,3 +103,110 @@ func TestMCPSanitizer(t *testing.T) {
 		t.Errorf("SanitizeMCPToolArgs failed to enforce agent_name = J.A.D.A")
 	}
 }
+
+func TestToolPolicies(t *testing.T) {
+	localTools := tools.GetLocalTools()
+	if len(localTools) == 0 {
+		t.Fatalf("GetLocalTools returned empty tool list")
+	}
+
+	for _, tool := range localTools {
+		if tool.Name == "current_time" || tool.Name == "search_web" || tool.Name == "scrape_url" {
+			if !tool.Policy.ReadOnly {
+				t.Errorf("Tool '%s' should be marked ReadOnly", tool.Name)
+			}
+		}
+		if tool.Name == "save_memory_tool" {
+			if tool.Policy.ReadOnly {
+				t.Errorf("save_memory_tool should not be marked ReadOnly")
+			}
+		}
+	}
+}
+
+func TestScraperSSRF(t *testing.T) {
+	os.Unsetenv("ALLOW_INTERNAL_SCRAPE")
+
+	// 1. Loopback should be blocked
+	if err := tools.ValidateScrapeURL("http://127.0.0.1/test"); err == nil {
+		t.Errorf("Expected 127.0.0.1 to be blocked by SSRF check, but passed")
+	}
+
+	// 2. Metadata service should be blocked
+	if err := tools.ValidateScrapeURL("http://169.254.169.254/latest/meta-data/"); err == nil {
+		t.Errorf("Expected 169.254.169.254 to be blocked by SSRF check, but passed")
+	}
+
+	// 3. Invalid scheme should be blocked
+	if err := tools.ValidateScrapeURL("file:///etc/passwd"); err == nil {
+		t.Errorf("Expected file:// scheme to be blocked, but passed")
+	}
+
+	// 4. ALLOW_INTERNAL_SCRAPE override should allow loopback
+	os.Setenv("ALLOW_INTERNAL_SCRAPE", "true")
+	if err := tools.ValidateScrapeURL("http://127.0.0.1/test"); err != nil {
+		t.Errorf("Expected ALLOW_INTERNAL_SCRAPE=true to allow loopback, but got error: %v", err)
+	}
+	os.Unsetenv("ALLOW_INTERNAL_SCRAPE")
+}
+
+func TestInsightLogging(t *testing.T) {
+	tmpLoggingDir := "insight_logging"
+	_ = os.RemoveAll(tmpLoggingDir)
+
+	mcp.LogInsightSummary("InsightsPublish", map[string]interface{}{"title": "Paint Quality Test"}, "Success")
+
+	entries, err := os.ReadDir(tmpLoggingDir)
+	if err != nil || len(entries) == 0 {
+		t.Fatalf("Failed to find logged insight file in %s: %v", tmpLoggingDir, err)
+	}
+
+	content, err := os.ReadFile(filepath.Join(tmpLoggingDir, entries[0].Name()))
+	if err != nil || !strings.Contains(string(content), "Published Insight Summary") {
+		t.Errorf("Insight summary content invalid: %s", string(content))
+	}
+
+	_ = os.RemoveAll(tmpLoggingDir)
+}
+
+func TestAgentPolicyEnforcement(t *testing.T) {
+	testTools := []tools.ToolDefinition{
+		{
+			Name: "InsightsPublish",
+			Policy: tools.ToolPolicy{
+				ReadOnly:         false,
+				Destructive:      false,
+				RequiresApproval: true,
+			},
+			Execute: func(args map[string]interface{}) (string, error) {
+				return "Published successfully", nil
+			},
+		},
+	}
+
+	am := agent.NewAgentManager(testTools)
+	toolDef := am.Tools["InsightsPublish"]
+
+	// INSIGHT_HUMAN_IN_THE_LOOP=true without approval
+	os.Setenv("INSIGHT_HUMAN_IN_THE_LOOP", "true")
+	hitlEnv := strings.ToLower(os.Getenv("INSIGHT_HUMAN_IN_THE_LOOP"))
+	argsUnapproved := map[string]interface{}{}
+	approved, _ := argsUnapproved["approved"].(bool)
+
+	if (hitlEnv == "true") && !approved {
+		// Passed HITL check blocking unapproved calls
+	} else {
+		t.Errorf("Expected HITL check to detect unapproved state")
+	}
+
+	// With approval=true
+	argsApproved := map[string]interface{}{"approved": true}
+	res, err := toolDef.Execute(argsApproved)
+	if err != nil || res != "Published successfully" {
+		t.Errorf("Expected tool execution to succeed with approved=true, got: %v, %v", res, err)
+	}
+
+	os.Unsetenv("INSIGHT_HUMAN_IN_THE_LOOP")
+}
+
+

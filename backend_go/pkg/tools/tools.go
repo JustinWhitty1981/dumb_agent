@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -15,11 +18,76 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
+type ToolPolicy struct {
+	ReadOnly         bool `json:"read_only"`
+	Destructive      bool `json:"destructive"`
+	RequiresApproval bool `json:"requires_approval"`
+}
+
 type ToolDefinition struct {
 	Name        string                 `json:"name"`
 	Description string                 `json:"description"`
 	Parameters  map[string]interface{} `json:"parameters"`
+	Policy      ToolPolicy             `json:"policy,omitempty"`
 	Execute     func(args map[string]interface{}) (string, error)
+}
+
+func isPrivateIP(ip net.IP) bool {
+	if ip == nil {
+		return true
+	}
+	if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() {
+		return true
+	}
+	ip4 := ip.To4()
+	if ip4 != nil {
+		switch {
+		case ip4[0] == 10:
+			return true
+		case ip4[0] == 172 && ip4[1] >= 16 && ip4[1] <= 31:
+			return true
+		case ip4[0] == 192 && ip4[1] == 168:
+			return true
+		case ip4[0] == 169 && ip4[1] == 254:
+			return true
+		}
+	}
+	return false
+}
+
+func ValidateScrapeURL(urlStr string) error {
+	allowInternal := strings.ToLower(os.Getenv("ALLOW_INTERNAL_SCRAPE"))
+	if allowInternal == "true" || allowInternal == "1" || allowInternal == "yes" {
+		return nil
+	}
+
+	parsedURL, err := url.Parse(urlStr)
+	if err != nil {
+		return fmt.Errorf("invalid URL format: %w", err)
+	}
+
+	scheme := strings.ToLower(parsedURL.Scheme)
+	if scheme != "http" && scheme != "https" {
+		return fmt.Errorf("forbidden URL scheme '%s' (only http and https allowed)", scheme)
+	}
+
+	hostname := parsedURL.Hostname()
+	if hostname == "" {
+		return fmt.Errorf("invalid host in URL")
+	}
+
+	ips, err := net.LookupIP(hostname)
+	if err != nil {
+		return fmt.Errorf("could not resolve host %s: %w", hostname, err)
+	}
+
+	for _, ip := range ips {
+		if isPrivateIP(ip) {
+			return fmt.Errorf("access to restricted or internal IP %s (%s) is forbidden", ip.String(), hostname)
+		}
+	}
+
+	return nil
 }
 
 func GetCurrentTime() (string, error) {
@@ -122,6 +190,10 @@ func SearchWeb(query string) (string, error) {
 }
 
 func ScrapeURL(urlStr string) (string, error) {
+	if err := ValidateScrapeURL(urlStr); err != nil {
+		return fmt.Sprintf("Scraping blocked by security policy: %v", err), nil
+	}
+
 	req, err := http.NewRequest("GET", urlStr, nil)
 	if err != nil {
 		return fmt.Sprintf("Failed to create request: %v", err), nil
@@ -140,7 +212,15 @@ func ScrapeURL(urlStr string) (string, error) {
 		return fmt.Sprintf("Scraping failed with status: %d", resp.StatusCode), nil
 	}
 
-	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	maxBytes := int64(2097152) // Default 2MB limit
+	if envMax := os.Getenv("MAX_SCRAPE_BYTES"); envMax != "" {
+		if parsed, err := strconv.ParseInt(envMax, 10, 64); err == nil && parsed > 0 {
+			maxBytes = parsed
+		}
+	}
+
+	limitedReader := io.LimitReader(resp.Body, maxBytes)
+	doc, err := goquery.NewDocumentFromReader(limitedReader)
 	if err != nil {
 		return fmt.Sprintf("Scraping failed: %v", err), nil
 	}
@@ -178,6 +258,11 @@ func GetLocalTools() []ToolDefinition {
 				"type":       "object",
 				"properties": map[string]interface{}{},
 			},
+			Policy: ToolPolicy{
+				ReadOnly:         true,
+				Destructive:      false,
+				RequiresApproval: false,
+			},
 			Execute: func(args map[string]interface{}) (string, error) {
 				return GetCurrentTime()
 			},
@@ -194,6 +279,11 @@ func GetLocalTools() []ToolDefinition {
 					},
 				},
 				"required": []string{"query"},
+			},
+			Policy: ToolPolicy{
+				ReadOnly:         true,
+				Destructive:      false,
+				RequiresApproval: false,
 			},
 			Execute: func(args map[string]interface{}) (string, error) {
 				q, _ := args["query"].(string)
@@ -212,6 +302,11 @@ func GetLocalTools() []ToolDefinition {
 					},
 				},
 				"required": []string{"url"},
+			},
+			Policy: ToolPolicy{
+				ReadOnly:         true,
+				Destructive:      false,
+				RequiresApproval: false,
 			},
 			Execute: func(args map[string]interface{}) (string, error) {
 				u, _ := args["url"].(string)
@@ -235,6 +330,11 @@ func GetLocalTools() []ToolDefinition {
 				},
 				"required": []string{"key", "content"},
 			},
+			Policy: ToolPolicy{
+				ReadOnly:         false,
+				Destructive:      false,
+				RequiresApproval: false,
+			},
 			Execute: func(args map[string]interface{}) (string, error) {
 				key, _ := args["key"].(string)
 				content, _ := args["content"].(string)
@@ -254,6 +354,11 @@ func GetLocalTools() []ToolDefinition {
 				},
 				"required": []string{"key"},
 			},
+			Policy: ToolPolicy{
+				ReadOnly:         true,
+				Destructive:      false,
+				RequiresApproval: false,
+			},
 			Execute: func(args map[string]interface{}) (string, error) {
 				key, _ := args["key"].(string)
 				return memory.GetMemory(key), nil
@@ -265,6 +370,11 @@ func GetLocalTools() []ToolDefinition {
 			Parameters: map[string]interface{}{
 				"type":       "object",
 				"properties": map[string]interface{}{},
+			},
+			Policy: ToolPolicy{
+				ReadOnly:         true,
+				Destructive:      false,
+				RequiresApproval: false,
 			},
 			Execute: func(args map[string]interface{}) (string, error) {
 				return memory.ListMemories(), nil

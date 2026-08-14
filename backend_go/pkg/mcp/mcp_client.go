@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -16,6 +17,38 @@ import (
 	"jada-backend/pkg/formatters"
 	"jada-backend/pkg/tools"
 )
+
+func LogInsightSummary(toolName string, args map[string]interface{}, responseResult string) {
+	dir := "insight_logging"
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		log.Printf("Failed to create insight_logging directory: %v", err)
+		return
+	}
+
+	now := time.Now().UTC()
+	filename := fmt.Sprintf("insight_%s_%d.md", now.Format("20060102_150405"), now.Nanosecond()/1e6)
+	fp := filepath.Join(dir, filename)
+
+	var sb strings.Builder
+	sb.WriteString("# Published Insight Summary\n\n")
+	sb.WriteString(fmt.Sprintf("**Timestamp:** %s\n", now.Format("2006-01-02 15:04:05 UTC")))
+	sb.WriteString(fmt.Sprintf("**Tool Name:** %s\n\n", toolName))
+
+	sb.WriteString("## Input Parameters\n```json\n")
+	argsJSON, _ := json.MarshalIndent(args, "", "  ")
+	sb.WriteString(string(argsJSON))
+	sb.WriteString("\n```\n\n")
+
+	sb.WriteString("## Response Result\n```\n")
+	sb.WriteString(responseResult)
+	sb.WriteString("\n```\n")
+
+	if err := os.WriteFile(fp, []byte(sb.String()), 0644); err != nil {
+		log.Printf("Failed to write insight summary to %s: %v", fp, err)
+	} else {
+		log.Printf("Insight summary logged successfully to: %s", fp)
+	}
+}
 
 func SanitizeMCPToolArgs(toolName string, args map[string]interface{}) map[string]interface{} {
 	if args == nil {
@@ -279,6 +312,16 @@ func GetHighByteMCPTools() []tools.ToolDefinition {
 		toolDesc := t.Description
 		toolParams := t.InputSchema
 
+		nameLower := strings.ToLower(toolName)
+		isInsightPublish := strings.Contains(nameLower, "insightspublish") || strings.Contains(nameLower, "publish")
+		isDestructive := strings.Contains(nameLower, "delete") || strings.Contains(nameLower, "remove")
+
+		toolPolicy := tools.ToolPolicy{
+			ReadOnly:         !isInsightPublish && !isDestructive,
+			Destructive:      isDestructive,
+			RequiresApproval: isInsightPublish || isDestructive,
+		}
+
 		execFunc := func(args map[string]interface{}) (string, error) {
 			sanitizedArgs := SanitizeMCPToolArgs(toolName, args)
 
@@ -327,6 +370,9 @@ func GetHighByteMCPTools() []tools.ToolDefinition {
 			var callJSONResp MCPJSONRPCResponse
 			if err := json.Unmarshal(callBody, &callJSONResp); err != nil {
 				resStr := string(callBody)
+				if isInsightPublish {
+					LogInsightSummary(toolName, sanitizedArgs, resStr)
+				}
 				return formatters.TruncateToolOutput(resStr, formatters.MaxToolOutputChars), nil
 			}
 
@@ -335,6 +381,9 @@ func GetHighByteMCPTools() []tools.ToolDefinition {
 			}
 
 			resStr := string(callJSONResp.Result)
+			if isInsightPublish {
+				LogInsightSummary(toolName, sanitizedArgs, resStr)
+			}
 			return formatters.TruncateToolOutput(resStr, formatters.MaxToolOutputChars), nil
 		}
 
@@ -342,6 +391,7 @@ func GetHighByteMCPTools() []tools.ToolDefinition {
 			Name:        toolName,
 			Description: toolDesc,
 			Parameters:  toolParams,
+			Policy:      toolPolicy,
 			Execute:     execFunc,
 		})
 	}

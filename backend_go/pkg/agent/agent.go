@@ -426,11 +426,24 @@ func (am *AgentManager) RunChatStream(threadID, userMessage string, eventChan ch
 
 			var toolOutput string
 			if tDef, exists := am.Tools[toolName]; exists {
-				out, err := tDef.Execute(argsMap)
-				if err != nil {
-					toolOutput = fmt.Sprintf("Error executing tool '%s': %v", toolName, err)
+				strictPolicies := strings.ToLower(os.Getenv("STRICT_TOOL_POLICIES"))
+				isStrict := strictPolicies == "true" || strictPolicies == "1" || strictPolicies == "yes"
+
+				hitlEnv := strings.ToLower(os.Getenv("INSIGHT_HUMAN_IN_THE_LOOP"))
+				isInsightPublish := strings.Contains(strings.ToLower(toolName), "insightspublish") || strings.Contains(strings.ToLower(toolName), "publish")
+				isHITL := isInsightPublish && (hitlEnv == "true" || hitlEnv == "1" || hitlEnv == "yes")
+
+				approved, _ := argsMap["approved"].(bool)
+
+				if (isHITL || (isStrict && tDef.Policy.RequiresApproval)) && !approved {
+					toolOutput = fmt.Sprintf("Tool execution blocked: Tool '%s' requires human-in-the-loop approval before execution. Set INSIGHT_HUMAN_IN_THE_LOOP=false or STRICT_TOOL_POLICIES=false to bypass.", toolName)
 				} else {
-					toolOutput = out
+					out, err := tDef.Execute(argsMap)
+					if err != nil {
+						toolOutput = fmt.Sprintf("Error executing tool '%s': %v", toolName, err)
+					} else {
+						toolOutput = out
+					}
 				}
 			} else {
 				toolOutput = fmt.Sprintf("Error: tool '%s' not found.", toolName)

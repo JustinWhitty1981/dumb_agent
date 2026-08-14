@@ -174,6 +174,7 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"status":             "healthy",
+			"llm_provider":       agentMgr.LLMProvider,
 			"vllm_url":           agentMgr.VLLMURL,
 			"model":              agentMgr.VLLMModel,
 			"active_tools_count": len(agentMgr.ToolList),

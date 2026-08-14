@@ -6,9 +6,26 @@
 [![React](https://img.shields.io/badge/React-18+-blue.svg)](https://react.dev/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A powerful AI chat assistant with real-time response streaming, live thinking status indicators, web search, web scraping, markdown memory, and HighByte MCP integration. Built with **Go (Golang)**, **LangChain / Python**, vLLM (Qwen3.5-9B-AWQ), and React.
+A powerful AI chat assistant with real-time response streaming, live thinking status indicators, web search, web scraping, markdown memory, and HighByte MCP integration. Built with **Go (Golang)**, **LangChain / Python**, vLLM (Qwen3.5-9B-AWQ), Azure OpenAI (GPT-5.1), and React.
 
 **Turn your local or corporate LLM into a powerful assistant with access to industrial MCP tools and real-world capabilities!**
+
+---
+
+## Features
+
+- **Dual LLM Provider Support** - Switch seamlessly between local edge vLLM models (e.g., `Qwen3.5-9B-AWQ`) and Azure OpenAI / GCC-High endpoints (e.g., `gpt-5.1`) using `LLM_PROVIDER=local` or `LLM_PROVIDER=azure_gcc_high`.
+- **Flexible Azure OpenAI Authentication** - Supports both **Static API Key (`AZURE_OPENAI_API_KEY`)** for rapid local testing and **Microsoft Entra ID (v2) OAuth Client Credentials (`AZURE_CLIENT_ID` + `AZURE_CLIENT_SECRET`)** with automatic 401 token invalidation and refresh for production.
+- **Real-Time Token Streaming** - Server-Sent Events (SSE) stream AI responses as they are generated token-by-token.
+- **Live Thinking & Tool Status Indicators** - Animated thinking bubbles display live status updates (e.g., `Running tool: paint_defects...`, `Thinking...`) during reasoning loops and auto-hide when text generation begins.
+- **Interactive Chat Interface** - Modern, responsive React/TypeScript frontend with markdown formatting and auto-resizing input.
+- **Sliding Conversation Memory** - Maintains context across messages with a 10-message sliding window to prevent token limit overflow.
+- **Payload Pre-Summarization** - Large raw JSON array payloads (e.g., door-level inspection logs) are pre-summarized into Markdown tables before hitting model context.
+- **HighByte MCP Parameter Auto-Sanitizer** - Transparently converts relative time expressions (e.g., "now-4h", "today", "4 hours ago") into valid ISO-8601 UTC string timestamps (`YYYY-MM-DDTHH:MM:SSZ`) required by HighByte tools.
+- **Web Search & Scraping** - Search the internet using Tavily API and extract clean page content.
+- **Persistent Memory** - Save and retrieve key-value information in markdown format.
+- **HighByte MCP Server Integration** - Automatically connects via StreamableHTTP/SSE to load 28+ industrial MCP tools.
+- **Context Window Guardrails** - Automatic tool output truncation (12k char limit) and LLM temperature optimization (0.0) for deterministic, reliable tool execution.
 
 ---
 
@@ -31,26 +48,6 @@ Empirical measurements from `docker stats`:
 | **Active Tools** | 34 tools (6 local + 28 HighByte MCP) | 34 tools (6 local + 28 HighByte MCP) | 100% Feature Parity |
 | **Token Streaming**| Real-Time SSE Streaming | Real-Time SSE Streaming | Identical user experience |
 
-#### Key Benefits of Go:
-- **Lightweight Footprint**: Python and heavy framework stacks consume 150–200 MB RAM at idle. The compiled Go executable requires only **~10 MB RAM**, dramatically cutting container resource overhead for edge or cloud deployments.
-- **Blazing Fast Concurrency**: Go's native goroutines stream real-time Server-Sent Events (SSE) with minimal CPU utilization.
-- **Zero Heavy Dependencies**: Pure static Go binary container with zero Python interpreter or heavy C-extension bloat.
-
----
-
-## Features
-
-- **Real-Time Token Streaming** - Server-Sent Events (SSE) stream AI responses as they are generated token-by-token.
-- **Live Thinking & Tool Status Indicators** - Animated thinking bubbles display live status updates (e.g., `Running tool: paint_defects...`, `Thinking...`) during reasoning loops and auto-hide when text generation begins.
-- **Interactive Chat Interface** - Modern, responsive React/TypeScript frontend with markdown formatting and auto-resizing input.
-- **Sliding Conversation Memory** - Maintains context across messages with a 10-message sliding window to prevent token limit overflow.
-- **Payload Pre-Summarization** - Large raw JSON array payloads (e.g., door-level inspection logs) are pre-summarized into Markdown tables before hitting model context.
-- **HighByte MCP Parameter Auto-Sanitizer** - Transparently converts relative time expressions (e.g., "now-4h", "today", "4 hours ago") into valid ISO-8601 UTC string timestamps (`YYYY-MM-DDTHH:MM:SSZ`) required by HighByte tools.
-- **Web Search & Scraping** - Search the internet using Tavily API and extract clean page content.
-- **Persistent Memory** - Save and retrieve key-value information in markdown format.
-- **HighByte MCP Server Integration** - Automatically connects via Streamable HTTP/SSE to load 28+ industrial MCP tools.
-- **Context Window Guardrails** - Automatic tool output truncation (12k char limit) and LLM temperature optimization (0.0) for deterministic, reliable tool execution.
-
 ---
 
 ## Tech Stack
@@ -59,7 +56,7 @@ Empirical measurements from `docker stats`:
 |-----------|------------|
 | **Go Backend** *(Port 5000)* | Go 1.22+, Chi Router, StreamableHTTP MCP |
 | **Python Backend** *(Port 4545)* | FastAPI, Uvicorn, Python 3.11, LangChain |
-| **LLM Inference** | vLLM (`/models/Qwen3.5-9B-AWQ` @ OpenAI-compatible API) |
+| **LLM Providers** | Local vLLM (`Qwen3.5-9B-AWQ`) or Azure OpenAI GCC-High (`gpt-5.1`) |
 | **MCP Integration** | HighByte MCP Server (StreamableHTTP transport) |
 | **Frontend** | React 18, TypeScript, Vite |
 | **Streaming** | Server-Sent Events (SSE) |
@@ -73,7 +70,7 @@ Empirical measurements from `docker stats`:
 ### Prerequisites
 
 - Docker & Docker Compose
-- Running vLLM instance (or OpenAI-compatible API endpoint)
+- Local vLLM instance **OR** Azure OpenAI GCC-High Endpoint
 - Tavily API key (for web search)
 - HighByte MCP Server URL & Bearer Token (optional, for industrial MCP tools)
 
@@ -96,9 +93,27 @@ Access the UI at: **`http://localhost:4545`**
 ## Configuration (`.env`)
 
 Create a `.env` file in the root directory:
+
 ```env
-VLLM_BASE_URL=http://172.18.0.2:8000/v1
+# Provider Mode: 'local' (vLLM) or 'azure_gcc_high' (Azure OpenAI)
+LLM_PROVIDER=azure_gcc_high
+
+# Local vLLM Endpoint
+VLLM_BASE_URL=http://172.18.0.4:8000/v1
 VLLM_MODEL=/models/Qwen3.5-9B-AWQ
+
+# Azure OpenAI / GCC-High Configuration
+AZURE_OPENAI_API_KEY=your_static_api_key_or_leave_blank_for_oauth
+AZURE_OPENAI_ENDPOINT=https://aisvc-foundry-ai-service-ent-dev.cognitiveservices.azure.us/
+AZURE_DEPLOYMENT_NAME=gpt-5.1-advanced-analytics-advanced-analytics-ent-dev
+AZURE_OPENAI_API_VERSION=2024-12-01-preview
+
+# Azure OAuth v2 Client Credentials (Optional if using AZURE_OPENAI_API_KEY)
+AZURE_TENANT_ID=a84d585b-574d-4eb7-be2a-eaea93ef7b1f
+AZURE_CLIENT_ID=your_client_id
+AZURE_CLIENT_SECRET=your_client_secret
+
+# Local & MCP Tool Credentials
 TAVILY_API_KEY=your_tavily_api_key
 HIGHBYTE_MCP_URL=https://nadefunsdpw01.oshkoshglobal.com:8885/mcp
 HIGHBYTE_MCP_BEARER_TOKEN=your_mcp_bearer_token
@@ -144,7 +159,7 @@ Retrieve conversation history for a thread.
 Clear conversation history for a thread.
 
 ### GET /api/health
-Health check endpoint returning vLLM, active tools count, and HighByte MCP status.
+Health check endpoint returning active provider, endpoint URL, model, and tool status.
 
 ---
 
@@ -166,6 +181,7 @@ dumb_agent-open_ai/
 ├── backend_go/             # Go Backend Implementation (Port 5000)
 │   ├── cmd/server/main.go  # Chi HTTP router & SSE streaming endpoints
 │   ├── pkg/agent/agent.go  # Go agent loop & real-time SSE token parser
+│   ├── pkg/llm/            # Azure OpenAI OAuth & endpoint resolution
 │   ├── pkg/mcp/mcp_client.go # HighByte MCP StreamableHTTP client & parameter auto-sanitizer
 │   ├── pkg/tools/tools.go  # Local tool implementations
 │   ├── pkg/memory/memory.go # Thread-safe Markdown memory storage
@@ -174,6 +190,7 @@ dumb_agent-open_ai/
 │
 ├── backend/                # Python Backend Implementation (Port 4545)
 │   ├── app.py              # FastAPI server & LangChain agent
+│   ├── azure_auth.py       # Azure OpenAI Auth module & factory
 │   ├── formatters.py       # Payload pre-summarizer
 │   ├── mcp_client.py       # HighByte MCP client
 │   └── tests/              # Pytest suite

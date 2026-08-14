@@ -10,7 +10,7 @@ import logging
 from typing import Optional, Dict, List
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel
@@ -42,6 +42,7 @@ VLLM_MODEL = os.getenv("VLLM_MODEL", "Qwen3.5-9B-AWQ")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "not-needed")
 HOST = os.getenv("HOST", "0.0.0.0")
 PORT = int(os.getenv("PORT", 8000))
+API_KEY = os.getenv("API_KEY", "").strip()
 MAX_HISTORY_MESSAGES = 10
 
 # System Prompt
@@ -186,6 +187,38 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="J.A.D.A API", lifespan=lifespan)
+
+
+@app.middleware("http")
+async def verify_api_key_middleware(request: Request, call_next):
+    """
+    HTTP middleware enforcing API key verification when API_KEY is set.
+    If API_KEY is empty/blank, authentication is bypassed (API is open).
+    Public endpoints (/api/health, /, /static/*) remain unauthenticated.
+    """
+    current_api_key = os.getenv("API_KEY", "").strip()
+    if not current_api_key:
+        return await call_next(request)
+
+    path = request.url.path
+    # Exempt public endpoints
+    if path in ["/", "/api/health", "/docs", "/openapi.json", "/favicon.ico"] or path.startswith("/static/"):
+        return await call_next(request)
+
+    # Validate header: X-API-Key or Authorization: Bearer <key>
+    provided_key = request.headers.get("X-API-Key") or request.headers.get("x-api-key")
+    if not provided_key:
+        auth_header = request.headers.get("Authorization") or request.headers.get("authorization")
+        if auth_header and auth_header.lower().startswith("bearer "):
+            provided_key = auth_header[7:].strip()
+
+    if not provided_key or provided_key != current_api_key:
+        return JSONResponse(
+            status_code=401,
+            content={"detail": "Unauthorized: Invalid or missing API key."}
+        )
+
+    return await call_next(request)
 
 # Mount Static Assets
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
@@ -397,4 +430,10 @@ async def root():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host=HOST, port=PORT)
+    ssl_keyfile = os.getenv("SSL_KEYFILE")
+    ssl_certfile = os.getenv("SSL_CERTFILE")
+    run_kwargs = {"host": HOST, "port": PORT}
+    if ssl_keyfile and ssl_certfile:
+        run_kwargs["ssl_keyfile"] = ssl_keyfile
+        run_kwargs["ssl_certfile"] = ssl_certfile
+    uvicorn.run(app, **run_kwargs)

@@ -16,6 +16,8 @@ A powerful AI chat assistant with real-time response streaming, live thinking st
 
 - **Dual LLM Provider Support** - Switch seamlessly between local edge vLLM models (e.g., `Qwen3.5-9B-AWQ`) and Azure OpenAI / GCC-High endpoints (e.g., `gpt-5.1`) using `LLM_PROVIDER=local` or `LLM_PROVIDER=azure_gcc_high`.
 - **Flexible Azure OpenAI Authentication** - Supports both **Static API Key (`AZURE_OPENAI_API_KEY`)** for rapid local testing and **Microsoft Entra ID (v2) OAuth Client Credentials (`AZURE_CLIENT_ID` + `AZURE_CLIENT_SECRET`)** with automatic 401 token invalidation and refresh for production.
+- **Backend API Key Security** - Optional API Key authentication (`API_KEY`) via `X-API-Key` or `Authorization: Bearer <key>` headers. If left blank, the API remains open for development.
+- **SSL / TLS Support** - Conditionally serve HTTPS natively via Uvicorn using `SSL_KEYFILE` and `SSL_CERTFILE` environment variables, or terminate TLS via a reverse proxy (Nginx, Traefik, Ingress, or Azure App Gateway) with zero code changes.
 - **Real-Time Token Streaming** - Server-Sent Events (SSE) stream AI responses as they are generated token-by-token.
 - **Live Thinking & Tool Status Indicators** - Animated thinking bubbles display live status updates (e.g., `Running tool: paint_defects...`, `Thinking...`) during reasoning loops and auto-hide when text generation begins.
 - **Interactive Chat Interface** - Modern, responsive React/TypeScript frontend with markdown formatting and auto-resizing input.
@@ -120,6 +122,14 @@ HIGHBYTE_MCP_BEARER_TOKEN=your_mcp_bearer_token
 HIGHBYTE_MCP_ENABLED=true
 HOST=0.0.0.0
 PORT=8000
+
+# Backend API Key Security (Leave blank/empty to keep API open)
+API_KEY=your_optional_backend_api_key
+
+# SSL / TLS Configuration (Optional: set paths to server certificate & private key)
+# SSL_KEYFILE=/app/certificates/server.key
+# SSL_CERTFILE=/app/certificates/server.crt
+
 TZ=America/Chicago
 ```
 

@@ -173,6 +173,41 @@ async def test_chat_streaming_endpoint():
 
 
 @pytest.mark.asyncio
+async def test_api_key_authentication_enforcement():
+    """Verify API Key authentication enforcement on protected endpoints when API_KEY is set."""
+    test_key = "secret_test_key_999"
+    os.environ["API_KEY"] = test_key
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        payload = {"message": "Hello", "thread_id": "auth_test_thread"}
+
+        # 1. Missing API Key header -> 401 Unauthorized
+        res_missing = await client.post("/api/chat", json=payload)
+        assert res_missing.status_code == 401
+        assert "Unauthorized" in res_missing.json().get("detail", "")
+
+        # 2. Invalid API Key header -> 401 Unauthorized
+        res_invalid = await client.post("/api/chat", json=payload, headers={"X-API-Key": "wrong_key"})
+        assert res_invalid.status_code == 401
+
+        # 3. Valid X-API-Key header -> 200 OK
+        res_valid_x = await client.post("/api/chat", json=payload, headers={"X-API-Key": test_key})
+        assert res_valid_x.status_code == 200
+
+        # 4. Valid Authorization: Bearer header -> 200 OK
+        res_valid_bearer = await client.post("/api/chat", json=payload, headers={"Authorization": f"Bearer {test_key}"})
+        assert res_valid_bearer.status_code == 200
+
+        # 5. Public health check endpoint remains accessible without key -> 200 OK
+        res_health = await client.get("/api/health")
+        assert res_health.status_code == 200
+
+    # Cleanup: restore open API
+    os.environ["API_KEY"] = ""
+
+
+@pytest.mark.asyncio
 async def test_wrap_tool_with_truncation_large_output():
     """Verify wrap_tool_with_truncation truncates large strings and serialized non-string outputs (lists/dicts)."""
     from langchain_core.tools import tool

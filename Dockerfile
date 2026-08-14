@@ -46,5 +46,5 @@ ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 ENV REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
 ENV CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
 
-# Run the application
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run the application (with conditional SSL support)
+CMD ["sh", "-c", "if [ -n \"$SSL_KEYFILE\" ] && [ -n \"$SSL_CERTFILE\" ]; then uvicorn app:app --host 0.0.0.0 --port ${PORT:-8000} --ssl-keyfile \"$SSL_KEYFILE\" --ssl-certfile \"$SSL_CERTFILE\"; else uvicorn app:app --host 0.0.0.0 --port ${PORT:-8000}; fi"]

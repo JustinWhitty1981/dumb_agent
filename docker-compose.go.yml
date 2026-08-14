@@ -1,13 +1,13 @@
 version: '3.8'
 
 services:
-  langchain-agent:
+  jada-go-agent:
     build:
       context: .
-      dockerfile: Dockerfile
-    container_name: langchain-agent
+      dockerfile: Dockerfile.go
+    container_name: jada-go-agent
     ports:
-      - "4545:8000"
+      - "5000:8000"
     env_file:
       - .env
     environment:
@@ -20,6 +20,5 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-      - ./backend:/app
-      - ./backend/memory_store:/app/memory_store
+      - ./backend_go/memory_store:/app/memory_store
     restart: unless-stopped

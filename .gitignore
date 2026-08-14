@@ -14,7 +14,6 @@ lib/
 lib64/
 parts/
 sdist/
-var/
 wheels/
 *.egg-info/
 .installed.cfg
@@ -24,6 +23,10 @@ wheels/
 node_modules/
 npm-debug.log
 yarn-error.log
+
+# Go & Test artifacts
+backend_go/memory_store/
+test_results.json
 
 # Environment variables
 .env

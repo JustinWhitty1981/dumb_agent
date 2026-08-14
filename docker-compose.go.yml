@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  jada-go-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile.go
+    container_name: jada-go-agent
+    ports:
+      - "5000:8000"
+    env_file:
+      - .env
+    environment:
+      - VLLM_BASE_URL=http://172.18.0.2:8000/v1
+      - VLLM_MODEL=/models/Qwen3.5-9B-AWQ
+      - TAVILY_API_KEY={yourapikey}
+      - HOST=0.0.0.0
+      - PORT=8000
+      - TZ=America/Chicago
+    volumes:
+      - ./backend_go/memory_store:/app/memory_store
+    restart: unless-stopped

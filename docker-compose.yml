@@ -24,6 +24,9 @@ services:
       - ENVIRONMENT=${ENVIRONMENT:-dev}
       - AZURE_DEPLOYMENT_NAME=${AZURE_DEPLOYMENT_NAME}
       - TAVILY_API_KEY=${TAVILY_API_KEY}
+      - API_KEY=${API_KEY}
+      - SSL_KEYFILE=${SSL_KEYFILE}
+      - SSL_CERTFILE=${SSL_CERTFILE}
       - HOST=0.0.0.0
       - PORT=8000
       - TZ=America/Chicago

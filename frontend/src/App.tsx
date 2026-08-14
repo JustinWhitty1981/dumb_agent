@@ -4,6 +4,7 @@ import Chat from './Chat'
 import './Chat.css'
 
 const API_BASE = window.location.origin
+const API_KEY = import.meta.env.VITE_API_KEY || (window as any).API_KEY || ''
 
 function App() {
   const [messages, setMessages] = useState<Message[]>([
@@ -44,11 +45,16 @@ function App() {
     let hasCreatedAssistantMessage = false
 
     try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      }
+      if (API_KEY) {
+        headers['X-API-Key'] = API_KEY
+      }
+
       const response = await fetch(`${API_BASE}/api/chat/stream`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({
           message: text,
           thread_id: 'default'

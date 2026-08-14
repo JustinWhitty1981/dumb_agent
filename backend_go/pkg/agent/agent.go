@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"jada-backend/pkg/formatters"
+	"jada-backend/pkg/llm"
 	"jada-backend/pkg/tools"
 )
 
@@ -101,8 +102,10 @@ type ChatCompletionChunk struct {
 }
 
 type AgentManager struct {
+	LLMProvider  string
 	VLLMURL      string
 	VLLMModel    string
+	TokenProv    *llm.TokenProvider
 	Tools        map[string]tools.ToolDefinition
 	ToolList     []tools.ToolDefinition
 	History      map[string][]ChatMessage
@@ -110,6 +113,13 @@ type AgentManager struct {
 }
 
 func NewAgentManager(toolsList []tools.ToolDefinition) *AgentManager {
+	llmProvider := strings.ToLower(os.Getenv("LLM_PROVIDER"))
+	if llmProvider == "azure" || llmProvider == "azure_gcc_high" {
+		llmProvider = "azure_gcc_high"
+	} else {
+		llmProvider = "local"
+	}
+
 	vllmURL := os.Getenv("VLLM_BASE_URL")
 	if vllmURL == "" {
 		vllmURL = "http://172.18.0.2:8000/v1"
@@ -124,13 +134,20 @@ func NewAgentManager(toolsList []tools.ToolDefinition) *AgentManager {
 		toolMap[t.Name] = t
 	}
 
-	return &AgentManager{
-		VLLMURL:   vllmURL,
-		VLLMModel: vllmModel,
-		Tools:     toolMap,
-		ToolList:  toolsList,
-		History:   make(map[string][]ChatMessage),
+	am := &AgentManager{
+		LLMProvider: llmProvider,
+		VLLMURL:     vllmURL,
+		VLLMModel:   vllmModel,
+		Tools:       toolMap,
+		ToolList:    toolsList,
+		History:     make(map[string][]ChatMessage),
 	}
+
+	if llmProvider == "azure_gcc_high" {
+		am.TokenProv = llm.NewAzureTokenProvider()
+	}
+
+	return am
 }
 
 func (am *AgentManager) GetHistory(threadID string) []ChatMessage {
@@ -208,7 +225,15 @@ func (am *AgentManager) RunChatStream(threadID, userMessage string, eventChan ch
 	messages = append(messages, ChatMessage{Role: "user", Content: userMessage})
 
 	openAITools := am.getOpenAITools()
-	endpoint := fmt.Sprintf("%s/chat/completions", strings.TrimSuffix(am.VLLMURL, "/"))
+
+	var endpoint string
+	var modelName string
+	if am.LLMProvider == "azure_gcc_high" {
+		endpoint, modelName = llm.GetAzureConfig()
+	} else {
+		endpoint = fmt.Sprintf("%s/chat/completions", strings.TrimSuffix(am.VLLMURL, "/"))
+		modelName = am.VLLMModel
+	}
 
 	client := &http.Client{Timeout: 120 * time.Second}
 	var fullAssistantResponse []string
@@ -218,7 +243,7 @@ func (am *AgentManager) RunChatStream(threadID, userMessage string, eventChan ch
 		eventChan <- SSEEvent{Type: "status", Content: "Thinking..."}
 
 		reqPayload := ChatCompletionRequest{
-			Model:       am.VLLMModel,
+			Model:       modelName,
 			Messages:    messages,
 			Tools:       openAITools,
 			Temperature: 0.0,
@@ -241,17 +266,47 @@ func (am *AgentManager) RunChatStream(threadID, userMessage string, eventChan ch
 		httpReq.Header.Set("Content-Type", "application/json")
 		httpReq.Header.Set("Accept", "text/event-stream")
 
+		if am.LLMProvider == "azure_gcc_high" {
+			apiKey := strings.TrimSpace(os.Getenv("AZURE_OPENAI_API_KEY"))
+			if apiKey != "" {
+				httpReq.Header.Set("api-key", apiKey)
+				httpReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", apiKey))
+			} else if am.TokenProv != nil {
+				token, err := am.TokenProv.GetBearerToken()
+				if err != nil {
+					eventChan <- SSEEvent{Type: "error", Content: fmt.Sprintf("Failed to acquire Azure OAuth token: %v", err)}
+					eventChan <- SSEEvent{Type: "done"}
+					return
+				}
+				httpReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+			}
+		}
+
 		resp, err := client.Do(httpReq)
 		if err != nil {
-			eventChan <- SSEEvent{Type: "error", Content: fmt.Sprintf("Error connecting to vLLM server: %v", err)}
+			eventChan <- SSEEvent{Type: "error", Content: fmt.Sprintf("Error connecting to LLM server (%s): %v", am.LLMProvider, err)}
 			eventChan <- SSEEvent{Type: "done"}
 			return
+		}
+
+		// Handle 401 retry once if using Azure
+		if resp.StatusCode == http.StatusUnauthorized && am.LLMProvider == "azure_gcc_high" && am.TokenProv != nil {
+			resp.Body.Close()
+			am.TokenProv.Invalidate()
+			token, err := am.TokenProv.GetBearerToken()
+			if err == nil {
+				retryReq, _ := http.NewRequest("POST", endpoint, bytes.NewBuffer(jsonBytes))
+				retryReq.Header.Set("Content-Type", "application/json")
+				retryReq.Header.Set("Accept", "text/event-stream")
+				retryReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+				resp, err = client.Do(retryReq)
+			}
 		}
 
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
 			resp.Body.Close()
-			eventChan <- SSEEvent{Type: "error", Content: fmt.Sprintf("vLLM API error status %d: %s", resp.StatusCode, string(body))}
+			eventChan <- SSEEvent{Type: "error", Content: fmt.Sprintf("LLM API error status %d: %s", resp.StatusCode, string(body))}
 			eventChan <- SSEEvent{Type: "done"}
 			return
 		}

@@ -233,4 +233,24 @@ def test_format_fallback_tool_summary_weather():
     assert "Sunny" in formatted
 
 
+def test_azure_auth_module():
+    """Verify azure_auth module config resolution and LLM factory initialization."""
+    from azure_auth import resolve_azure_config, get_azure_chat_llm, AzureTokenProvider
+    
+    cfg = resolve_azure_config()
+    assert "endpoint" in cfg
+    assert "deployment_name" in cfg
+    assert "api_version" in cfg
+
+    # Test Azure LLM Factory
+    llm = get_azure_chat_llm(temperature=0.0)
+    assert llm is not None
+
+    # Test Token Provider initialization
+    tp = AzureTokenProvider(client_id="test_client", client_secret="test_secret")
+    assert tp.client_id == "test_client"
+    assert tp.client_secret == "test_secret"
+
+
+
 

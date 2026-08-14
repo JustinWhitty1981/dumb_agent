@@ -31,9 +31,12 @@ from tools import (
     list_memories_tool
 )
 
+from azure_auth import get_azure_chat_llm, resolve_azure_config
+
 logger = logging.getLogger("jada_app")
 
 # Environment Configuration
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "local").strip().lower()
 VLLM_URL = os.getenv("VLLM_BASE_URL", "http://127.0.0.1:8000/v1")
 VLLM_MODEL = os.getenv("VLLM_MODEL", "Qwen3.5-9B-AWQ")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "not-needed")
@@ -57,13 +60,18 @@ SYSTEM_PROMPT = (
     "4. Always analyze tool results and present a human-readable summary in Markdown (bold headers, key metrics, summary bullet points). Never output raw JSON arrays directly as your response."
 )
 
-# LLM Initialization
-llm = ChatOpenAI(
-    model=VLLM_MODEL,
-    base_url=VLLM_URL,
-    api_key=OPENAI_API_KEY,
-    temperature=0.0
-)
+# LLM Initialization based on LLM_PROVIDER
+if LLM_PROVIDER in ["azure", "azure_gcc_high"]:
+    logger.info("Initializing Azure OpenAI LLM Provider...")
+    llm = get_azure_chat_llm(temperature=0.0)
+else:
+    logger.info(f"Initializing Local/Edge vLLM LLM Provider at {VLLM_URL}...")
+    llm = ChatOpenAI(
+        model=VLLM_MODEL,
+        base_url=VLLM_URL,
+        api_key=OPENAI_API_KEY,
+        temperature=0.0
+    )
 
 # Local Tool Registry
 LOCAL_TOOLS = [
@@ -351,13 +359,32 @@ async def get_tools():
 
 @app.get("/api/health")
 async def health_check():
-    return {
+    health_data = {
         "status": "healthy",
-        "vllm_url": VLLM_URL,
-        "model": VLLM_MODEL,
+        "llm_provider": LLM_PROVIDER,
         "active_tools_count": len(ALL_TOOLS),
         "highbyte_mcp_url": os.getenv("HIGHBYTE_MCP_URL", "not-configured")
     }
+
+    if LLM_PROVIDER in ["azure", "azure_gcc_high"]:
+        azure_cfg = resolve_azure_config()
+        api_key = os.getenv("AZURE_OPENAI_API_KEY", "").strip()
+        client_id = os.getenv("AZURE_CLIENT_ID", "").strip()
+        auth_mode = "static_api_key" if api_key else ("oauth_v2" if client_id else "unconfigured")
+
+        health_data.update({
+            "endpoint": azure_cfg["endpoint"],
+            "model": azure_cfg["deployment_name"],
+            "api_version": azure_cfg["api_version"],
+            "azure_auth_mode": auth_mode,
+        })
+    else:
+        health_data.update({
+            "vllm_url": VLLM_URL,
+            "model": VLLM_MODEL,
+        })
+
+    return health_data
 
 
 @app.get("/")

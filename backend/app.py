@@ -20,7 +20,7 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import HumanMessage, AIMessage, BaseMessage
 from langchain_openai import ChatOpenAI
 
-from mcp_client import get_highbyte_mcp_tools, sanitize_mcp_tool_args
+from mcp_client import get_highbyte_mcp_tools, sanitize_mcp_tool_args, log_insight_summary
 from formatters import truncate_tool_output, format_fallback_tool_summary, MAX_TOOL_OUTPUT_CHARS
 from tools import (
     current_time,
@@ -111,13 +111,28 @@ def wrap_tool_with_truncation(tool_obj, max_chars: int = MAX_TOOL_OUTPUT_CHARS):
         return res_str
 
     async def _safe_async_call(func, *args, **kwargs):
+        sanitized_input = None
         if args and isinstance(args[0], dict):
-            args = (sanitize_mcp_tool_args(tool_name, args[0]),) + args[1:]
+            sanitized_input = sanitize_mcp_tool_args(tool_name, args[0])
+            args = (sanitized_input,) + args[1:]
         elif "input" in kwargs and isinstance(kwargs["input"], dict):
-            kwargs["input"] = sanitize_mcp_tool_args(tool_name, kwargs["input"])
+            sanitized_input = sanitize_mcp_tool_args(tool_name, kwargs["input"])
+            kwargs["input"] = sanitized_input
+
+        # Check HITL & policy toggles
+        is_publish = "publish" in tool_name.lower() or "insightspublish" in tool_name.lower()
+        strict_policies = os.getenv("STRICT_TOOL_POLICIES", "").lower() in ("true", "1", "yes")
+        hitl_env = os.getenv("INSIGHT_HUMAN_IN_THE_LOOP", "").lower() in ("true", "1", "yes")
+        approved = sanitized_input.get("approved", False) if isinstance(sanitized_input, dict) else False
+
+        if (is_publish and hitl_env or strict_policies) and not approved:
+            blocked_msg = f"Tool execution blocked: Tool '{tool_name}' requires human-in-the-loop approval before execution. Set INSIGHT_HUMAN_IN_THE_LOOP=false or STRICT_TOOL_POLICIES=false to bypass."
+            return _ensure_tuple_if_required(blocked_msg)
 
         try:
             res = await asyncio.wait_for(func(*args, **kwargs), timeout=25.0)
+            if is_publish and sanitized_input:
+                log_insight_summary(tool_name, sanitized_input, res)
             return truncate_tool_output(res, max_chars=max_chars, response_format=response_fmt)
         except asyncio.TimeoutError:
             err = f"Error: Tool '{tool_name}' timed out after 25 seconds waiting for remote response."
@@ -144,6 +159,8 @@ def wrap_tool_with_truncation(tool_obj, max_chars: int = MAX_TOOL_OUTPUT_CHARS):
             try:
                 clean_input = sanitize_mcp_tool_args(tool_name, input) if isinstance(input, dict) else input
                 res = orig_invoke(clean_input, config=config, **kwargs)
+                if ("publish" in tool_name.lower() or "insightspublish" in tool_name.lower()) and isinstance(clean_input, dict):
+                    log_insight_summary(tool_name, clean_input, res)
                 return truncate_tool_output(res, max_chars=max_chars, response_format=response_fmt)
             except Exception as e:
                 err = f"Error executing tool '{tool_name}': {str(e)}"

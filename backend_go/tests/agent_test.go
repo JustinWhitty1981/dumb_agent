@@ -102,6 +102,21 @@ func TestMCPSanitizer(t *testing.T) {
 	if insightsArgs["agent_name"] != "J.A.D.A" {
 		t.Errorf("SanitizeMCPToolArgs failed to enforce agent_name = J.A.D.A")
 	}
+
+	// Test stringified JSON array in insight parameter
+	rawStringifiedInsight := `[{"type": "quality_risk", "title": "Test Insight Title"}]`
+	insightArgs := map[string]interface{}{
+		"insight": []interface{}{rawStringifiedInsight},
+	}
+	sanitizedInsights := mcp.SanitizeMCPToolArgs("InsightsPublish", insightArgs)
+	cleanedInsightList, ok := sanitizedInsights["insight"].([]interface{})
+	if !ok || len(cleanedInsightList) == 0 {
+		t.Fatalf("SanitizeMCPToolArgs failed to parse stringified insight array into list")
+	}
+	firstObj, ok := cleanedInsightList[0].(map[string]interface{})
+	if !ok || firstObj["title"] != "Test Insight Title" {
+		t.Errorf("SanitizeMCPToolArgs failed to unwrap stringified insight object: %v", cleanedInsightList[0])
+	}
 }
 
 func TestToolPolicies(t *testing.T) {

@@ -17,6 +17,11 @@ A powerful AI chat assistant with real-time response streaming, live thinking st
 - **Dual LLM Provider Support** - Switch seamlessly between local edge vLLM models (e.g., `Qwen3.5-9B-AWQ`) and Azure OpenAI / GCC-High endpoints (e.g., `gpt-5.1`) using `LLM_PROVIDER=local` or `LLM_PROVIDER=azure_gcc_high`.
 - **Flexible Azure OpenAI Authentication** - Supports both **Static API Key (`AZURE_OPENAI_API_KEY`)** for rapid local testing and **Microsoft Entra ID (v2) OAuth Client Credentials (`AZURE_CLIENT_ID` + `AZURE_CLIENT_SECRET`)** with automatic 401 token invalidation and refresh for production.
 - **Backend API Key Security** - Optional API Key authentication (`API_KEY`) via `X-API-Key` or `Authorization: Bearer <key>` headers. If left blank, the API remains open for development.
+- **Tool Safety Boundaries & Policies** - Deterministic tool policies (`ReadOnly`, `Destructive`, `RequiresApproval`) configured via `STRICT_TOOL_POLICIES`. Write-capable tools can be gated requiring explicit approval.
+- **Human-in-the-Loop Insight Gating** - Toggle `INSIGHT_HUMAN_IN_THE_LOOP` to require human verification before publishing high-impact plant insights.
+- **Insight Summary Logging** - Every published insight automatically records a formatted Markdown summary in `insight_logging/` (`./backend/insight_logging/` or `./backend_go/insight_logging/`).
+- **Insight Viewer Payload Sanitization** - Transparently un-strings double-encoded stringified JSON arrays/dicts in the `insight` field into clean, native JSON object lists (`fix_insight_payload`) for visual rendering in HighByte Insight Viewer.
+- **Hardened Web Scraper** - `scrape_url` streams response bytes up to a strict limit (`MAX_SCRAPE_BYTES`, default 2MB) and enforces SSRF protection (`ALLOW_INTERNAL_SCRAPE`) against loopback, link-local, and private IP addresses.
 - **SSL / TLS Support** - Conditionally serve HTTPS natively via Uvicorn using `SSL_KEYFILE` and `SSL_CERTFILE` environment variables, or terminate TLS via a reverse proxy (Nginx, Traefik, Ingress, or Azure App Gateway) with zero code changes.
 - **Real-Time Token Streaming** - Server-Sent Events (SSE) stream AI responses as they are generated token-by-token.
 - **Live Thinking & Tool Status Indicators** - Animated thinking bubbles display live status updates (e.g., `Running tool: paint_defects...`, `Thinking...`) during reasoning loops and auto-hide when text generation begins.
@@ -24,7 +29,7 @@ A powerful AI chat assistant with real-time response streaming, live thinking st
 - **Sliding Conversation Memory** - Maintains context across messages with a 10-message sliding window to prevent token limit overflow.
 - **Payload Pre-Summarization** - Large raw JSON array payloads (e.g., door-level inspection logs) are pre-summarized into Markdown tables before hitting model context.
 - **HighByte MCP Parameter Auto-Sanitizer** - Transparently converts relative time expressions (e.g., "now-4h", "today", "4 hours ago") into valid ISO-8601 UTC string timestamps (`YYYY-MM-DDTHH:MM:SSZ`) required by HighByte tools.
-- **Web Search & Scraping** - Search the internet using Tavily API and extract clean page content.
+- **Web Search & Scraping** - Search the internet using Tavily API and extract clean page content safely.
 - **Persistent Memory** - Save and retrieve key-value information in markdown format.
 - **HighByte MCP Server Integration** - Automatically connects via StreamableHTTP/SSE to load 28+ industrial MCP tools.
 - **Context Window Guardrails** - Automatic tool output truncation (12k char limit) and LLM temperature optimization (0.0) for deterministic, reliable tool execution.
@@ -98,7 +103,7 @@ Create a `.env` file in the root directory:
 
 ```env
 # Provider Mode: 'local' (vLLM) or 'azure_gcc_high' (Azure OpenAI)
-LLM_PROVIDER=azure_gcc_high
+LLM_PROVIDER=local
 
 # Local vLLM Endpoint
 VLLM_BASE_URL=http://172.18.0.4:8000/v1
@@ -125,6 +130,12 @@ PORT=8000
 
 # Backend API Key Security (Leave blank/empty to keep API open)
 API_KEY=your_optional_backend_api_key
+
+# Security, Scraper, & Tool Policy Safeguards
+STRICT_TOOL_POLICIES=false
+INSIGHT_HUMAN_IN_THE_LOOP=false
+MAX_SCRAPE_BYTES=2097152
+ALLOW_INTERNAL_SCRAPE=false
 
 # SSL / TLS Configuration (Optional: set paths to server certificate & private key)
 # SSL_KEYFILE=/app/certificates/server.key
@@ -178,7 +189,7 @@ Health check endpoint returning active provider, endpoint URL, model, and tool s
 | Tool Category | Tools | Description |
 |---------------|-------|-------------|
 | **Time & Search** | `current_time()`, `search_web(query)` | Live time and web search via Tavily |
-| **Web Scraping** | `scrape_url(url)` | Extract cleaned page text |
+| **Web Scraping** | `scrape_url(url)` | Extract cleaned page text (hardened with byte limit & SSRF checks) |
 | **Memory** | `save_memory_tool`, `get_memory_tool`, `list_memories_tool` | Persistent markdown key-value storage |
 | **MCP Industrial** | `paint_defects`, `insights_publish`, `influx_query_router`, `uns_snapshot_all_v1`, etc. | 28 HighByte MCP server tools |
 
@@ -192,17 +203,21 @@ dumb_agent-open_ai/
 │   ├── cmd/server/main.go  # Chi HTTP router & SSE streaming endpoints
 │   ├── pkg/agent/agent.go  # Go agent loop & real-time SSE token parser
 │   ├── pkg/llm/            # Azure OpenAI OAuth & endpoint resolution
-│   ├── pkg/mcp/mcp_client.go # HighByte MCP StreamableHTTP client & parameter auto-sanitizer
-│   ├── pkg/tools/tools.go  # Local tool implementations
+│   ├── pkg/mcp/mcp_client.go # HighByte MCP client, argument auto-sanitizer & insight payload fixer
+│   ├── pkg/tools/tools.go  # Local tool implementations & SSRF validator
 │   ├── pkg/memory/memory.go # Thread-safe Markdown memory storage
 │   ├── pkg/formatters/     # Pre-summarizer & output truncation
+│   ├── insight_logging/    # Markdown logs of published insights
 │   └── tests/agent_test.go # Go unit & regression tests
 │
 ├── backend/                # Python Backend Implementation (Port 4545)
 │   ├── app.py              # FastAPI server & LangChain agent
 │   ├── azure_auth.py       # Azure OpenAI Auth module & factory
 │   ├── formatters.py       # Payload pre-summarizer
-│   ├── mcp_client.py       # HighByte MCP client
+│   ├── mcp_client.py       # HighByte MCP client & insight payload sanitizer
+│   ├── tools.py            # Local tools & hardened scraper
+│   ├── memory_store/       # Markdown memory store
+│   ├── insight_logging/    # Markdown logs of published insights
 │   └── tests/              # Pytest suite
 │
 ├── frontend/               # React 18 / TypeScript Frontend

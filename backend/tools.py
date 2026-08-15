@@ -70,6 +70,37 @@ def search_web(query: str) -> str:
         return f"Search failed: {str(e)}"
 
 
+import ipaddress
+import socket
+from urllib.parse import urlparse
+
+
+def validate_scrape_url(url_str: str) -> None:
+    """Validates URL to prevent SSRF against loopback, link-local, or private IP ranges."""
+    allow_internal = os.getenv("ALLOW_INTERNAL_SCRAPE", "").lower() in ("true", "1", "yes")
+    if allow_internal:
+        return
+
+    parsed = urlparse(url_str)
+    if parsed.scheme.lower() not in ("http", "https"):
+        raise ValueError(f"Forbidden URL scheme '{parsed.scheme}' (only http and https allowed).")
+
+    hostname = parsed.hostname
+    if not hostname:
+        raise ValueError("Invalid host in URL.")
+
+    try:
+        ip_list = socket.getaddrinfo(hostname, None)
+    except Exception as e:
+        raise ValueError(f"Could not resolve host {hostname}: {e}")
+
+    for addr in ip_list:
+        ip_str = addr[4][0]
+        ip_obj = ipaddress.ip_address(ip_str)
+        if ip_obj.is_loopback or ip_obj.is_link_local or ip_obj.is_private or ip_obj.is_multicast or ip_obj.is_unspecified:
+            raise ValueError(f"Access to restricted or internal IP {ip_str} ({hostname}) is forbidden.")
+
+
 @tool
 def scrape_url(url: str) -> str:
     """
@@ -82,15 +113,29 @@ def scrape_url(url: str) -> str:
         The text content extracted from the page.
     """
     try:
+        validate_scrape_url(url)
+    except Exception as e:
+        return f"Scraping blocked by security policy: {str(e)}"
+
+    try:
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
         }
         
-        client = httpx.Client(headers=headers, timeout=30.0)
-        response = client.get(url)
-        response.raise_for_status()
-        
-        soup = BeautifulSoup(response.text, "html.parser")
+        max_bytes = 2097152  # Default 2MB limit
+        env_max = os.getenv("MAX_SCRAPE_BYTES", "").strip()
+        if env_max.isdigit() and int(env_max) > 0:
+            max_bytes = int(env_max)
+
+        response_content = bytearray()
+        with httpx.stream("GET", url, headers=headers, timeout=30.0, follow_redirects=True) as response:
+            response.raise_for_status()
+            for chunk in response.iter_bytes():
+                response_content.extend(chunk)
+                if len(response_content) >= max_bytes:
+                    break
+
+        soup = BeautifulSoup(response_content.decode("utf-8", errors="ignore"), "html.parser")
         
         # Remove script and style elements
         for script in soup(["script", "style", "noscript"]):

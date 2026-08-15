@@ -1,31 +1,31 @@
 {
-  "timestamp": "2026-08-14 16:48:09",
-  "total": 12,
-  "passed": 12,
+  "timestamp": "2026-08-15 08:46:59",
+  "total": 13,
+  "passed": 13,
   "failed": 0,
   "skipped": 0,
-  "duration_seconds": 8.41,
+  "duration_seconds": 12.23,
   "exit_code": 0,
   "tests": [
     {
       "node_id": "tests/test_agent_suite.py::test_current_time_tool",
       "test_name": "test_current_time_tool",
       "status": "PASSED",
-      "duration_seconds": 0.0,
+      "duration_seconds": 0.001,
       "error": null
     },
     {
       "node_id": "tests/test_agent_suite.py::test_memory_lifecycle",
       "test_name": "test_memory_lifecycle",
       "status": "PASSED",
-      "duration_seconds": 0.013,
+      "duration_seconds": 0.01,
       "error": null
     },
     {
       "node_id": "tests/test_agent_suite.py::test_web_search_gold_price",
       "test_name": "test_web_search_gold_price",
       "status": "PASSED",
-      "duration_seconds": 0.173,
+      "duration_seconds": 0.145,
       "error": null
     },
     {
@@ -39,7 +39,7 @@
       "node_id": "tests/test_agent_suite.py::test_highbyte_mcp_paint_defects_tool",
       "test_name": "test_highbyte_mcp_paint_defects_tool",
       "status": "PASSED",
-      "duration_seconds": 1.232,
+      "duration_seconds": 1.098,
       "error": null
     },
     {
@@ -53,14 +53,14 @@
       "node_id": "tests/test_agent_suite.py::test_chat_streaming_endpoint",
       "test_name": "test_chat_streaming_endpoint",
       "status": "PASSED",
-      "duration_seconds": 2.725,
+      "duration_seconds": 3.516,
       "error": null
     },
     {
       "node_id": "tests/test_agent_suite.py::test_api_key_authentication_enforcement",
       "test_name": "test_api_key_authentication_enforcement",
       "status": "PASSED",
-      "duration_seconds": 2.773,
+      "duration_seconds": 5.89,
       "error": null
     },
     {
@@ -74,7 +74,7 @@
       "node_id": "tests/test_agent_suite.py::test_insights_publish_agent_name_enforcement",
       "test_name": "test_insights_publish_agent_name_enforcement",
       "status": "PASSED",
-      "duration_seconds": 0.002,
+      "duration_seconds": 0.005,
       "error": null
     },
     {
@@ -88,7 +88,14 @@
       "node_id": "tests/test_agent_suite.py::test_azure_auth_module",
       "test_name": "test_azure_auth_module",
       "status": "PASSED",
-      "duration_seconds": 0.009,
+      "duration_seconds": 0.008,
+      "error": null
+    },
+    {
+      "node_id": "tests/test_agent_suite.py::test_fix_insight_payload_and_logging",
+      "test_name": "test_fix_insight_payload_and_logging",
+      "status": "PASSED",
+      "duration_seconds": 0.012,
       "error": null
     }
   ]

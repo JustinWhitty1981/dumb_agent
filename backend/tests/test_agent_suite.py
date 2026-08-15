@@ -287,5 +287,39 @@ def test_azure_auth_module():
     assert tp.client_secret == "test_secret"
 
 
+def test_fix_insight_payload_and_logging():
+    """Verify fix_insight_payload un-strings double-encoded JSON arrays and log_insight_summary writes markdown summaries."""
+    from mcp_client import fix_insight_payload, log_insight_summary
+    import shutil
+
+    # 1. Test stringified JSON array
+    raw_stringified = ['[{"type": "quality_risk", "title": "Weather Defect Correlation", "summary": "High humidity impact."}]']
+    fixed = fix_insight_payload(raw_stringified)
+    assert isinstance(fixed, list)
+    assert len(fixed) == 1
+    assert isinstance(fixed[0], dict)
+    assert fixed[0]["title"] == "Weather Defect Correlation"
+
+    # 2. Test log_insight_summary
+    logging_dir = os.path.join(os.getcwd(), "insight_logging")
+    if os.path.exists(logging_dir):
+        shutil.rmtree(logging_dir)
+
+    log_insight_summary("InsightsPublish", {"agent_name": "J.A.D.A", "insight": fixed}, "Success")
+
+    assert os.path.exists(logging_dir)
+    files = os.listdir(logging_dir)
+    assert len(files) == 1
+    
+    with open(os.path.join(logging_dir, files[0]), "r", encoding="utf-8") as f:
+        content = f.read()
+        assert "Published Insight Summary" in content
+        assert "Weather Defect Correlation" in content
+
+    # Cleanup
+    shutil.rmtree(logging_dir)
+
+
+
 
 

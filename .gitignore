@@ -37,9 +37,17 @@ test_results.json
 *.swp
 *.swo
 
-# Docker
+# Docker & Certificates
 docker-compose.override.yml
-certificates/
+certificates/*
+!certificates/.gitkeep
+*.crt
+*.key
+*.pem
+*.pfx
+*.cer
+*.p12
+
 
 # OS
 .DS_Store

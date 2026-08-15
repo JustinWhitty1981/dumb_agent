@@ -16,10 +16,90 @@ from langchain_core.tools import BaseTool
 logger = logging.getLogger("mcp_client")
 
 
+def log_insight_summary(tool_name: str, args: Dict[str, Any], response_result: Any) -> None:
+    """
+    Logs published insight summaries to insight_logging/ folder.
+    """
+    try:
+        dir_path = os.path.join(os.getcwd(), "insight_logging")
+        os.makedirs(dir_path, exist_ok=True)
+
+        now = datetime.now(timezone.utc)
+        filename = f"insight_{now.strftime('%Y%m%d_%H%M%S')}_{now.microsecond // 1000}.md"
+        filepath = os.path.join(dir_path, filename)
+
+        import json
+        args_json = json.dumps(args, indent=2)
+
+        content = (
+            f"# Published Insight Summary\n\n"
+            f"**Timestamp:** {now.strftime('%Y-%m-%d %H:%M:%S UTC')}\n"
+            f"**Tool Name:** {tool_name}\n\n"
+            f"## Input Parameters\n```json\n{args_json}\n```\n\n"
+            f"## Response Result\n```\n{response_result}\n```\n"
+        )
+
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write(content)
+
+        logger.info(f"Insight summary logged successfully to: {filepath}")
+    except Exception as e:
+        logger.error(f"Failed to log insight summary: {e}")
+
+
+def fix_insight_payload(insight_val: Any) -> Any:
+    """
+    Ensures insight parameter is a list of native dictionaries.
+    Un-strings stringified JSON arrays/objects passed by LLMs.
+    """
+    import json
+    if isinstance(insight_val, str):
+        s = insight_val.strip()
+        if (s.startswith("[") and s.endswith("]")) or (s.startswith("{") and s.endswith("}")):
+            try:
+                parsed = json.loads(s)
+                return fix_insight_payload(parsed)
+            except Exception:
+                return insight_val
+        return insight_val
+
+    if isinstance(insight_val, dict):
+        return [insight_val]
+
+    if isinstance(insight_val, list):
+        cleaned_list = []
+        for item in insight_val:
+            if isinstance(item, str):
+                s = item.strip()
+                if (s.startswith("[") and s.endswith("]")) or (s.startswith("{") and s.endswith("}")):
+                    try:
+                        parsed = json.loads(s)
+                        if isinstance(parsed, list):
+                            cleaned_list.extend(fix_insight_payload(parsed))
+                        elif isinstance(parsed, dict):
+                            cleaned_list.append(parsed)
+                        else:
+                            cleaned_list.append(item)
+                    except Exception:
+                        cleaned_list.append(item)
+                else:
+                    cleaned_list.append(item)
+            elif isinstance(item, dict):
+                cleaned_list.append(item)
+            elif isinstance(item, list):
+                cleaned_list.extend(fix_insight_payload(item))
+            else:
+                cleaned_list.append(item)
+        return cleaned_list
+
+    return insight_val
+
+
 def sanitize_mcp_tool_args(tool_name: str, args: Dict[str, Any]) -> Dict[str, Any]:
     """
     Sanitizes and standardizes tool input arguments for HighByte MCP tools.
     Converts relative date/time strings ('now-4h', 'today') into ISO-8601 UTC timestamps.
+    Fixes stringified insight JSON payloads into native lists/dictionaries.
     """
     if not isinstance(args, dict):
         return args
@@ -62,11 +142,14 @@ def sanitize_mcp_tool_args(tool_name: str, args: Dict[str, Any]) -> Dict[str, An
                         st = now_utc - timedelta(minutes=num)
                     sanitized[time_key] = st.strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    # 2. Enforce agent_name for InsightsPublish
-    if "insightspublish" in tool_name.lower():
+    # 2. Enforce agent_name & repair insight payload structure for InsightsPublish
+    if "publish" in tool_name.lower() or "insightspublish" in tool_name.lower():
         sanitized["agent_name"] = "J.A.D.A"
+        if "insight" in sanitized:
+            sanitized["insight"] = fix_insight_payload(sanitized["insight"])
 
     return sanitized
+
 
 
 async def get_highbyte_mcp_tools() -> List[BaseTool]:

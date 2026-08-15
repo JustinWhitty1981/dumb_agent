@@ -50,6 +50,36 @@ func LogInsightSummary(toolName string, args map[string]interface{}, responseRes
 	}
 }
 
+func fixInsightPayload(v interface{}) interface{} {
+	switch val := v.(type) {
+	case string:
+		strTrim := strings.TrimSpace(val)
+		if (strings.HasPrefix(strTrim, "[") && strings.HasSuffix(strTrim, "]")) ||
+			(strings.HasPrefix(strTrim, "{") && strings.HasSuffix(strTrim, "}")) {
+			var parsed interface{}
+			if err := json.Unmarshal([]byte(strTrim), &parsed); err == nil {
+				return fixInsightPayload(parsed)
+			}
+		}
+		return val
+	case map[string]interface{}:
+		return []interface{}{val}
+	case []interface{}:
+		var cleaned []interface{}
+		for _, item := range val {
+			subCleaned := fixInsightPayload(item)
+			if subList, ok := subCleaned.([]interface{}); ok {
+				cleaned = append(cleaned, subList...)
+			} else {
+				cleaned = append(cleaned, subCleaned)
+			}
+		}
+		return cleaned
+	default:
+		return v
+	}
+}
+
 func SanitizeMCPToolArgs(toolName string, args map[string]interface{}) map[string]interface{} {
 	if args == nil {
 		return args
@@ -116,8 +146,12 @@ func SanitizeMCPToolArgs(toolName string, args map[string]interface{}) map[strin
 		}
 	}
 
-	if strings.Contains(strings.ToLower(toolName), "insightspublish") {
+	nameLower := strings.ToLower(toolName)
+	if strings.Contains(nameLower, "insightspublish") || strings.Contains(nameLower, "publish") {
 		sanitized["agent_name"] = "J.A.D.A"
+		if rawInsight, ok := sanitized["insight"]; ok {
+			sanitized["insight"] = fixInsightPayload(rawInsight)
+		}
 	}
 
 	return sanitized

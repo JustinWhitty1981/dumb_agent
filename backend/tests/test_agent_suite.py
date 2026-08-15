@@ -79,10 +79,10 @@ def test_web_search_gold_price():
 
 
 def test_scrape_url_tool():
-    """Verify scrape_url tool extracts text content from a web page URL."""
+    """Verify scrape_url tool extracts text content from a web page URL or enforces SSRF policy."""
     result = scrape_url.invoke({"url": "http://localhost:8000/api/health"})
     assert isinstance(result, str)
-    assert "healthy" in result or "Content from" in result
+    assert "healthy" in result or "Content from" in result or "Scraping blocked by security policy" in result
 
 
 # -------------------------------------------------------------------

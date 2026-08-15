@@ -70,7 +70,7 @@ This document outlines the architectural plan, technical benefits, and Level of 
 ---
 
 ### Component 3: HighByte MCP Client & Parameter Auto-Sanitizer
-- **Current Implementation**: `mcp_client.py` uses `langchain-mcp-adapters` with `streamable_http` transport to connect to `https://nadefunsdpw01.oshkoshglobal.com:8885/mcp` with Bearer auth. Dynamically discovers 28 HighByte tools. `sanitize_mcp_tool_args()` converts relative timestamps (`now-4h`, `today`, `4 hours ago`) to ISO-8601 UTC strings (`2026-08-12T00:00:00Z`).
+- **Current Implementation**: `mcp_client.py` uses `langchain-mcp-adapters` with `streamable_http` transport to connect to `https://your-mcp-server:8885/mcp` with Bearer auth. Dynamically discovers 28 HighByte tools. `sanitize_mcp_tool_args()` converts relative timestamps (`now-4h`, `today`, `4 hours ago`) to ISO-8601 UTC strings (`2026-08-12T00:00:00Z`).
 - **Target Go Implementation**:
   - Use a native Go MCP library (such as `github.com/mark3labs/mcp-go`) or build a streamable HTTP SSE JSON-RPC 2.0 client.
   - Auto-discover tools and map JSON schema inputs into Go ADK tool definitions.

@@ -135,7 +135,7 @@ GET /api/health
   "vllm_url": "http://172.18.0.2:8000/v1",
   "model": "/models/Qwen3.5-9B-AWQ",
   "active_tools_count": 34,
-  "highbyte_mcp_url": "https://nadefunsdpw01.oshkoshglobal.com:8885/mcp"
+  "highbyte_mcp_url": "https://your-mcp-server:8885/mcp"
 }
 ```
 
@@ -169,7 +169,7 @@ Dynamically loaded at startup via Streamable HTTP / SSE transport from the HighB
 | VLLM_BASE_URL | http://172.18.0.2:8000/v1 | vLLM endpoint URL |
 | VLLM_MODEL | /models/Qwen3.5-9B-AWQ | LLM model path |
 | TAVILY_API_KEY | - | Tavily search API key |
-| HIGHBYTE_MCP_URL | https://nadefunsdpw01.oshkoshglobal.com:8885/mcp | HighByte MCP server endpoint |
+| HIGHBYTE_MCP_URL | https://your-mcp-server:8885/mcp | HighByte MCP server endpoint |
 | HIGHBYTE_MCP_BEARER_TOKEN | - | Bearer token for HighByte MCP server |
 | HIGHBYTE_MCP_ENABLED | true | Toggle HighByte MCP integration (true/false) |
 | HOST | 0.0.0.0 | Server bind address |

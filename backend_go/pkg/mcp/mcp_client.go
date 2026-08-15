@@ -262,7 +262,7 @@ func GetHighByteMCPTools() []tools.ToolDefinition {
 
 	mcpURL := os.Getenv("HIGHBYTE_MCP_URL")
 	if mcpURL == "" {
-		mcpURL = "https://nadefunsdpw01.oshkoshglobal.com:8885/mcp"
+		mcpURL = "https://your-mcp-server:8885/mcp"
 	}
 
 	bearerToken := os.Getenv("HIGHBYTE_MCP_BEARER_TOKEN")

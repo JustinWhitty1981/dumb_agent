@@ -163,7 +163,7 @@ async def get_highbyte_mcp_tools() -> List[BaseTool]:
         logger.info("HighByte MCP integration is disabled via HIGHBYTE_MCP_ENABLED=false.")
         return []
 
-    mcp_url = os.getenv("HIGHBYTE_MCP_URL", "https://nadefunsdpw01.oshkoshglobal.com:8885/mcp")
+    mcp_url = os.getenv("HIGHBYTE_MCP_URL", "https://your-mcp-server:8885/mcp")
     bearer_token = os.getenv("HIGHBYTE_MCP_BEARER_TOKEN") or os.getenv("MCP_BEARER_TOKEN")
 
     if not mcp_url:

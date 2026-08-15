@@ -122,7 +122,7 @@ AZURE_CLIENT_SECRET=your_client_secret
 
 # Local & MCP Tool Credentials
 TAVILY_API_KEY=your_tavily_api_key
-HIGHBYTE_MCP_URL=https://nadefunsdpw01.oshkoshglobal.com:8885/mcp
+HIGHBYTE_MCP_URL=https://your-mcp-server:8885/mcp
 HIGHBYTE_MCP_BEARER_TOKEN=your_mcp_bearer_token
 HIGHBYTE_MCP_ENABLED=true
 HOST=0.0.0.0

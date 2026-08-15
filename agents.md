@@ -119,7 +119,7 @@ docker compose -f docker-compose.go.yml up --build -d
 | VLLM_BASE_URL | http://172.18.0.4:8000/v1 | vLLM OpenAI-compatible endpoint |
 | VLLM_MODEL | /models/Qwen3.5-9B-AWQ | LLM model path |
 | TAVILY_API_KEY | - | Tavily search API key |
-| HIGHBYTE_MCP_URL | https://nadefunsdpw01.oshkoshglobal.com:8885/mcp | HighByte MCP server endpoint |
+| HIGHBYTE_MCP_URL | https://your-mcp-server:8885/mcp | HighByte MCP server endpoint |
 | HIGHBYTE_MCP_BEARER_TOKEN | - | Bearer token for MCP authentication |
 | HIGHBYTE_MCP_ENABLED | true | Enable/disable MCP tool integration |
 | STRICT_TOOL_POLICIES | false | Enable deterministic policy checks for destructive/write tools |

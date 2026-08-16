@@ -111,8 +111,8 @@ VLLM_MODEL=/models/Qwen3.5-9B-AWQ
 
 # Azure OpenAI / GCC-High Configuration
 AZURE_OPENAI_API_KEY=your_static_api_key_or_leave_blank_for_oauth
-AZURE_OPENAI_ENDPOINT=https://aisvc-foundry-ai-service-ent-dev.cognitiveservices.azure.us/
-AZURE_DEPLOYMENT_NAME=gpt-5.1-advanced-analytics-advanced-analytics-ent-dev
+AZURE_OPENAI_ENDPOINT=https://aisvc-foundry-ai.cognitiveservices.azure.us/
+AZURE_DEPLOYMENT_NAME=gpt-5.1
 AZURE_OPENAI_API_VERSION=2024-12-01-preview
 
 # Azure OAuth v2 Client Credentials (Optional if using AZURE_OPENAI_API_KEY)
